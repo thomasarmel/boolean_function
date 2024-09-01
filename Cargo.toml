@@ -2,6 +2,12 @@
 name = "boolean_function"
 version = "0.0.1"
 edition = "2021"
+authors = ["Thomas Prévost"]
+license = "MIT OR Apache-2.0"
+#keywords = ["boolean"]
+categories = ["algorithms", "cryptography", "mathematics"]
+repository = "https://github.com/thomasarmel/boolean_function"
+exclude = [".github/*"]
 
 [dependencies]
 num-traits = "0.2.19"

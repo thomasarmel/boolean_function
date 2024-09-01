@@ -1,7 +1,8 @@
-use crate::{BooleanFunctionImpl, BooleanFunctionError, BooleanFunction};
+use std::any::Any;
+use crate::{BooleanFunctionImpl, BooleanFunctionError, BooleanFunction, BooleanFunctionType};
 use crate::BooleanFunctionError::TooBigVariableCount;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SmallBooleanFunction {
     variables_count: usize,
     truth_table: u64,
@@ -50,6 +51,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
         self.variables_count
     }
 
+    fn get_boolean_function_type(&self) -> BooleanFunctionType {
+        BooleanFunctionType::Small
+    }
+
     fn is_balanced(&self) -> bool {
         let expected_set_number: u32 = 1 << (self.variables_count - 1);
         self.truth_table.count_ones() == expected_set_number
@@ -78,6 +83,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
     fn __clone(&self) -> BooleanFunction {
         Box::new(self.clone())
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -85,20 +94,61 @@ mod tests {
     use crate::{BooleanFunctionImpl, SmallBooleanFunction};
 
     #[test]
+    fn test_from_truth_table() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xaa55aa55);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 7);
+        assert!(boolean_function.is_err());
+    }
+
+    #[test]
+    fn test_get_num_variables() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        assert_eq!(boolean_function.get_num_variables(), 5);
+    }
+
+    #[test]
+    fn test_is_balanced() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        assert!(boolean_function.is_balanced());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x17ffe80, 5).unwrap();
+        assert!(boolean_function.is_balanced());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaaaaaaaa, 5).unwrap();
+        assert!(boolean_function.is_balanced());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xabce1234, 5).unwrap();
+        assert!(!boolean_function.is_balanced());
+    }
+
+    #[test]
+    fn test_compute_cellular_automata_rule() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xabce1234, 5).unwrap();
+        assert_eq!(boolean_function.compute_cellular_automata_rule(0), false);
+        assert_eq!(boolean_function.compute_cellular_automata_rule(1), false);
+        assert_eq!(boolean_function.compute_cellular_automata_rule(4), true);
+        assert_eq!(boolean_function.compute_cellular_automata_rule(8), false);
+        assert_eq!(boolean_function.compute_cellular_automata_rule(23), true);
+    }
+
+    #[test]
     fn test_derivative() {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
-        let derivative = boolean_function.derivative_inner(1);
-        assert_eq!(derivative.unwrap().get_truth_table_u64(), 0xffffffff);
+        let derivative = boolean_function.derivative_inner(1).unwrap();
+        assert_eq!(derivative.get_num_variables(), 5);
+        assert_eq!(derivative.get_truth_table_u64(), 0xffffffff);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaaddbb55, 5).unwrap();
-        let derivative = boolean_function.derivative_inner(1);
-        assert_eq!(derivative.unwrap().get_truth_table_u64(), 0xff33ccff);
+        let derivative = boolean_function.derivative_inner(1).unwrap();
+        assert_eq!(derivative.get_truth_table_u64(), 0xff33ccff);
 
-        let derivative = boolean_function.derivative_inner(2);
-        assert_eq!(derivative.unwrap().get_truth_table_u64(), 0x00aa5500);
+        let derivative = boolean_function.derivative_inner(2).unwrap();
+        assert_eq!(derivative.get_truth_table_u64(), 0x00aa5500);
 
-        let derivative = boolean_function.derivative_inner(3);
-        assert_eq!(derivative.unwrap().get_truth_table_u64(), 0xff6666ff);
+        let derivative = boolean_function.derivative_inner(3).unwrap();
+        assert_eq!(derivative.get_truth_table_u64(), 0xff6666ff);
 
         let derivative = boolean_function.derivative_inner(32);
         assert!(derivative.is_err());
@@ -111,5 +161,8 @@ mod tests {
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55, 5).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "0000aa55");
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0, 5).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00000000");
     }
 }
