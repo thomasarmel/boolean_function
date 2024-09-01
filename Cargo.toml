@@ -13,3 +13,5 @@ exclude = [".github/*"]
 num-traits = "0.2.19"
 num-bigint = "0.4.6"
 thiserror = "1.0.63"
+itertools = "0.13.0"
+fast-boolean-anf-transform = "0.0.2"

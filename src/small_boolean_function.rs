@@ -1,6 +1,8 @@
-use std::any::Any;
-use crate::{BooleanFunctionImpl, BooleanFunctionError, BooleanFunction, BooleanFunctionType};
+use crate::anf_polynom::AnfPolynomial;
 use crate::BooleanFunctionError::TooBigVariableCount;
+use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
+use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
+use std::any::Any;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SmallBooleanFunction {
@@ -10,8 +12,12 @@ pub struct SmallBooleanFunction {
 
 impl SmallBooleanFunction {
     /// Length must be < 6
-    pub fn from_truth_table(truth_table: u64, variables_count: usize) -> Result<Self, BooleanFunctionError> {
-        if variables_count > 6 { // TODO skip test if needed, maybe create another function
+    pub fn from_truth_table(
+        truth_table: u64,
+        variables_count: usize,
+    ) -> Result<Self, BooleanFunctionError> {
+        if variables_count > 6 {
+            // TODO skip test if needed, maybe create another function
             return Err(TooBigVariableCount(6));
         }
         Ok(SmallBooleanFunction {
@@ -29,12 +35,16 @@ impl SmallBooleanFunction {
         {
             let max_input_value = self.get_max_input_value();
             if direction > max_input_value {
-                return Err(BooleanFunctionError::TooBigDerivativeDirection(max_input_value));
+                return Err(BooleanFunctionError::TooBigDerivativeDirection(
+                    max_input_value,
+                ));
             }
         }
         let mut derivative_truth_table: u64 = 0;
         for x in 0..=self.get_max_input_value() {
-            if self.compute_cellular_automata_rule(x) ^ self.compute_cellular_automata_rule(x ^ direction) {
+            if self.compute_cellular_automata_rule(x)
+                ^ self.compute_cellular_automata_rule(x ^ direction)
+            {
                 derivative_truth_table |= 1 << x;
             }
         }
@@ -74,6 +84,11 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError> {
         Ok(Box::new(self.derivative_inner(direction)?))
+    }
+
+    fn algebraic_normal_form(&self) -> AnfPolynomial {
+        let anf_form = fast_bool_anf_transform_unsigned(self.truth_table, self.variables_count);
+        AnfPolynomial::from_truth_table_small(anf_form, self.variables_count)
     }
 
     fn printable_hex_truth_table(&self) -> String {
@@ -164,5 +179,47 @@ mod tests {
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0, 5).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "00000000");
+    }
+
+    #[test]
+    fn test_algebraic_normal_form() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(30, 3).unwrap();
+        assert_eq!(
+            boolean_function
+                .algebraic_normal_form()
+                .get_polynomial_small()
+                .unwrap(),
+            30
+        );
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0, 3).unwrap();
+        assert_eq!(
+            boolean_function
+                .algebraic_normal_form()
+                .get_polynomial_small()
+                .unwrap(),
+            0
+        );
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(110, 3).unwrap();
+        assert_eq!(
+            boolean_function
+                .algebraic_normal_form()
+                .get_polynomial_small()
+                .unwrap(),
+            142
+        );
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(30, 3).unwrap();
+        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1 + x0 + x1 + x2");
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0, 3).unwrap();
+        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "0");
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(110, 3).unwrap();
+        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1*x2 + x0*x1 + x0 + x1");
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(123, 3).unwrap();
+        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1 + x1*x2 + x1 + 1");
     }
 }
