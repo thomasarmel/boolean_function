@@ -138,6 +138,24 @@ pub trait BooleanFunctionImpl: Debug + Any {
         })
     }
 
+    fn nonlinearity(&self) -> u32 {
+        ((1 << self.get_num_variables()) - (0..=self.get_max_input_value()).map(|x| {
+            self.walsh_hadamard_transform(x).unsigned_abs()
+        }).max().unwrap_or(0)) >> 1
+    }
+
+    /// Meaning maximally nonlinear
+    /// All derivative are balanced
+    fn is_bent(&self) -> bool {
+        if self.get_num_variables() & 1 != 0 {
+            return false;
+        }
+        self.nonlinearity()
+            == ((1 << self.get_num_variables())
+                - (1 << (self.get_num_variables() >> 1)))
+                >> 1
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -145,7 +163,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn as_any(&self) -> &dyn Any;
 
-    // TODO bent almost bent
+    // TODO almost bent
 }
 
 pub type BooleanFunction = Box<dyn BooleanFunctionImpl>;
@@ -582,7 +600,37 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert!(!boolean_function.is_symmetric());
 
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000008").unwrap();
+        assert!(!boolean_function.is_symmetric());
+
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff").unwrap();
         assert!(boolean_function.is_symmetric());
+    }
+
+    #[test]
+    fn test_nonlinearity() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        assert_eq!(boolean_function.nonlinearity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert_eq!(boolean_function.nonlinearity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000a").unwrap();
+        assert_eq!(boolean_function.nonlinearity(), 2);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        assert_eq!(boolean_function.nonlinearity(), 28);
+    }
+
+    #[test]
+    fn test_is_bent() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        assert!(!boolean_function.is_bent());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        assert!(boolean_function.is_bent());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
+        assert!(!boolean_function.is_bent());
     }
 }
