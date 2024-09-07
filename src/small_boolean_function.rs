@@ -94,9 +94,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
     }
 
     fn is_linear(&self) -> bool {
+        let max_input_value = self.get_max_input_value();
         [self.truth_table, self.reverse_inner().truth_table].iter().any(|rule| {
             let mut equivalent_xor_function: u64 = 0;
-            for i in 0..=self.get_max_input_value() {
+            for i in 0..=max_input_value {
                 let mut equivalent_xor_function_eval_i = false;
                 for j in 0..self.variables_count {
                     if *rule & (1 << (1 << j)) != 0 {

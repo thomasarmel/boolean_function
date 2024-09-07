@@ -127,6 +127,17 @@ pub trait BooleanFunctionImpl: Debug + Any {
         self.algebraic_normal_form().get_degree()
     }
 
+    fn is_symmetric(&self) -> bool {
+        let variables_count = self.get_num_variables() as u32;
+        let precomputed_hamming_weights = (0..(variables_count + 1))
+            .map(|i| self.compute_cellular_automata_rule(u32::MAX.checked_shr(32 - i).unwrap_or(0)))
+            .collect::<Vec<bool>>();
+
+        (0u32..(1 << variables_count)).all(|i| {
+            precomputed_hamming_weights[i.count_ones() as usize] == self.compute_cellular_automata_rule(i)
+        })
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -555,5 +566,23 @@ mod tests {
             super::boolean_function_from_hex_string_truth_table("00000000ffffffff")
                 .unwrap();
         assert!(boolean_function.is_linear());
+    }
+
+    #[test]
+    fn test_is_symmetric() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00").unwrap();
+        assert!(boolean_function.is_symmetric());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ff").unwrap();
+        assert!(boolean_function.is_symmetric());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("80").unwrap();
+        assert!(boolean_function.is_symmetric());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert!(!boolean_function.is_symmetric());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff").unwrap();
+        assert!(boolean_function.is_symmetric());
     }
 }
