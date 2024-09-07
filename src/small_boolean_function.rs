@@ -53,6 +53,13 @@ impl SmallBooleanFunction {
             truth_table: derivative_truth_table,
         })
     }
+
+    pub fn reverse_inner(&self) -> Self {
+        Self {
+            variables_count: self.variables_count,
+            truth_table: !self.truth_table & (u64::MAX >> (64 - (1 << self.variables_count))),
+        }
+    }
 }
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
@@ -84,6 +91,29 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError> {
         Ok(Box::new(self.derivative_inner(direction)?))
+    }
+
+    fn is_linear(&self) -> bool {
+        [self.truth_table, self.reverse_inner().truth_table].iter().any(|rule| {
+            let mut equivalent_xor_function: u64 = 0;
+            for i in 0..=self.get_max_input_value() {
+                let mut equivalent_xor_function_eval_i = false;
+                for j in 0..self.variables_count {
+                    if *rule & (1 << (1 << j)) != 0 {
+                        equivalent_xor_function_eval_i ^= (i & (1 << j)) == 0;
+                    }
+                }
+                equivalent_xor_function |= (equivalent_xor_function_eval_i as u64) << i;
+            }
+            *rule == equivalent_xor_function || *rule == (Self {
+                variables_count: self.variables_count,
+                truth_table: equivalent_xor_function,
+            }).reverse_inner().truth_table
+        })
+    }
+
+    fn reverse(&self) -> BooleanFunction {
+        Box::new(self.reverse_inner())
     }
 
     fn algebraic_normal_form(&self) -> AnfPolynomial {
@@ -221,5 +251,59 @@ mod tests {
 
         let boolean_function = SmallBooleanFunction::from_truth_table(123, 3).unwrap();
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1 + x1*x2 + x1 + 1");
+    }
+
+    #[test]
+    fn test_reverse_inner() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0x55aa55aa);
+        assert_eq!(reversed_boolean_function.get_num_variables(), 5);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 6).unwrap();
+        let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0xffffffff55aa55aa);
+        assert_eq!(reversed_boolean_function.get_num_variables(), 6);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0, 6).unwrap();
+        let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0xffffffffffffffff);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
+        let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0);
+    }
+
+    #[test]
+    fn test_is_linear() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x17ffe80, 5).unwrap();
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaaaaaaaa, 5).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xabce1234, 5).unwrap();
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x00000000, 5).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffff, 5).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x0000000000000000, 6).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x00000000ffffffff, 6).unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xabcdef0123456789, 6).unwrap();
+        assert!(!boolean_function.is_linear());
     }
 }

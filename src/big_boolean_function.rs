@@ -42,6 +42,13 @@ impl BigBooleanFunction {
             truth_table: derivative_truth_table,
         })
     }
+
+    pub fn reverse_inner(&self) -> Self {
+        BigBooleanFunction {
+            variables_count: self.variables_count,
+            truth_table: self.truth_table.clone() ^ ((BigUint::one() << (1 << self.variables_count)) - BigUint::one()),
+        }
+    }
 }
 impl BooleanFunctionImpl for BigBooleanFunction {
     #[inline]
@@ -72,6 +79,29 @@ impl BooleanFunctionImpl for BigBooleanFunction {
 
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError> {
         Ok(Box::new(self.derivative_inner(direction)?))
+    }
+
+    fn is_linear(&self) -> bool {
+        [&self.truth_table, &self.reverse_inner().truth_table].iter().any(|rule| {
+            let mut equivalent_xor_function = BigUint::zero();
+            for i in 0..=self.get_max_input_value() {
+                let mut equivalent_xor_function_eval_i = false;
+                for j in 0..self.variables_count {
+                    if *rule & (BigUint::one() << (1 << j)) != BigUint::zero() {
+                        equivalent_xor_function_eval_i ^= (i & (1 << j)) == 0;
+                    }
+                }
+                equivalent_xor_function |= BigUint::from(equivalent_xor_function_eval_i) << i;
+            }
+            **rule == equivalent_xor_function || **rule == (Self {
+                variables_count: self.variables_count,
+                truth_table: equivalent_xor_function,
+            }).reverse_inner().truth_table
+        })
+    }
+
+    fn reverse(&self) -> BooleanFunction {
+        Box::new(self.reverse_inner())
     }
 
     fn algebraic_normal_form(&self) -> AnfPolynomial {
@@ -248,5 +278,49 @@ mod tests {
             7,
         );
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1*x2*x3*x4*x5*x6 + x0*x1*x2*x3*x4*x5 + x0*x1*x2*x3*x4*x6 + x0*x1*x2*x3*x5*x6 + x0*x1*x2*x4*x5*x6 + x0*x1*x3*x4*x5*x6 + x0*x2*x3*x4*x5*x6 + x1*x2*x3*x4*x5*x6 + x0*x1*x2*x3*x4 + x0*x1*x2*x3*x5 + x0*x1*x2*x4*x5 + x0*x1*x3*x4*x5 + x0*x2*x3*x4*x5 + x1*x2*x3*x4*x5 + x0*x1*x2*x3*x6 + x0*x1*x2*x4*x6 + x0*x1*x3*x4*x6 + x0*x2*x3*x4*x6 + x1*x2*x3*x4*x6 + x0*x1*x2*x5*x6 + x0*x1*x3*x5*x6 + x0*x2*x3*x5*x6 + x1*x2*x3*x5*x6 + x0*x1*x4*x5*x6 + x0*x2*x4*x5*x6 + x1*x2*x4*x5*x6 + x0*x3*x4*x5*x6 + x1*x3*x4*x5*x6 + x2*x3*x4*x5*x6 + x0*x2*x3*x4 + x0*x1*x3*x5 + x0*x1*x4*x5 + x0*x3*x4*x5 + x0*x1*x4*x6 + x1*x3*x4*x6 + x0*x3*x5*x6 + x0*x4*x5*x6 + x1*x4*x5*x6 + x2*x4*x5*x6 + x0*x1*x3 + x1*x2*x3 + x0*x1*x4 + x0*x2*x4 + x0*x3*x4 + x0*x3*x5 + x1*x4*x5 + x0*x1*x6 + x0*x3*x6 + x1*x3*x6 + x2*x3*x6 + x0*x4*x6 + x1*x4*x6 + x2*x4*x6 + x1*x5*x6 + x4*x5*x6 + x0*x1 + x1*x2 + x1*x3 + x2*x3 + x0*x4 + x1*x4 + x3*x4 + x0*x5 + x1*x5 + x2*x5 + x4*x5 + x4*x6 + x0 + x1 + x3 + x6 + 1");
+    }
+
+    #[test]
+    fn test_reverse_inner() {
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
+            7,
+        );
+        let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "86967e833a76c45953cd91b89e60a52f");
+        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+    }
+
+    #[test]
+    fn test_is_linear() {
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
+            7,
+        );
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD1", 16).unwrap(),
+            7,
+        );
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("00000000000000000000000000000000", 16).unwrap(),
+            7,
+        );
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ffffffffffffffffffffffffffffffff", 16).unwrap(),
+            7,
+        );
+        assert!(boolean_function.is_linear());
+
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("0000000000000000ffffffffffffffff", 16).unwrap(),
+            7,
+        );
+        assert!(boolean_function.is_linear());
     }
 }

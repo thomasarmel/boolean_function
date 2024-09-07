@@ -117,6 +117,10 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError>;
 
+    fn is_linear(&self) -> bool;
+
+    fn reverse(&self) -> BooleanFunction;
+
     fn algebraic_normal_form(&self) -> AnfPolynomial;
 
     fn algebraic_degree(&self) -> usize {
@@ -510,5 +514,46 @@ mod tests {
             super::boolean_function_from_hex_string_truth_table("0969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
         assert_ne!(&boolean_function, &boolean_function4);
+    }
+
+    #[test]
+    fn test_reverse() {
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
+        let reversed_boolean_function = boolean_function.reverse();
+        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(
+            reversed_boolean_function.printable_hex_truth_table(),
+            "86967e833a76c45953cd91b89e60a52f"
+        );
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
+        let reversed_boolean_function = boolean_function.reverse();
+        assert_eq!(reversed_boolean_function.get_num_variables(), 4);
+        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
+    }
+
+    #[test]
+    fn test_is_linear() {
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0000000000000000ffffffffffffffff")
+                .unwrap();
+        assert!(boolean_function.is_linear());
+
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef0123456789")
+                .unwrap();
+        assert!(!boolean_function.is_linear());
+
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000ffffffff")
+                .unwrap();
+        assert!(boolean_function.is_linear());
     }
 }
