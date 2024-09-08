@@ -158,6 +158,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Function, degree and dimension of annihilator vector space
     /// Special case: annihilator of zero function is one function, by convention
+    /// $ f(x).g(x) = 0 \ \ \forall x \in \mathbb{F}_2^n. $
     fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)>; // TODO max degree in Option
 
     fn algebraic_immunity(&self) -> usize {
