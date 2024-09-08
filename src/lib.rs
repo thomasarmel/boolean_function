@@ -172,6 +172,13 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_walsh_spectrum.len() == 1 || (absolute_walsh_spectrum.len() == 2 && absolute_walsh_spectrum.contains_key(&0))
     }
 
+    fn sum_of_square_indicator(&self) -> usize {
+        (0..=self.get_max_input_value())
+            .map(|w| self.auto_correlation_transform(w))
+            .map(|value| (value as i64 * value as i64) as usize)
+            .sum()
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -728,5 +735,20 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890").unwrap();
         assert!(!boolean_function.is_plateaued());
+    }
+
+    #[test]
+    fn test_sum_of_square_indicator() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert_eq!(boolean_function.sum_of_square_indicator(), 32768);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
+        assert_eq!(boolean_function.sum_of_square_indicator(), 4096);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        assert_eq!(boolean_function.sum_of_square_indicator(), 84992);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.sum_of_square_indicator(), 32768);
     }
 }
