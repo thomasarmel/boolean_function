@@ -156,6 +156,17 @@ pub trait BooleanFunctionImpl: Debug + Any {
                 >> 1
     }
 
+    /// Function, degree and dimension of annihilator vector space
+    /// Special case: annihilator of zero function is one function, by convention
+    fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)>; // TODO max degree in Option
+
+    fn algebraic_immunity(&self) -> usize {
+        match self.annihilator(self.get_num_variables()) {
+            None => 0,
+            Some(annihilator) => annihilator.1
+        }
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -163,7 +174,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn as_any(&self) -> &dyn Any;
 
-    // TODO almost bent
+    // TODO almost bent, mul (and tt), sum, impl not, iterate on values
 }
 
 pub type BooleanFunction = Box<dyn BooleanFunctionImpl>;
@@ -632,5 +643,68 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
         assert!(!boolean_function.is_bent());
+    }
+
+    #[test]
+    fn test_annihilator() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        let annihilator = boolean_function.annihilator(0).unwrap();
+        assert_eq!(annihilator.0.printable_hex_truth_table(), "ffffffff");
+        assert_eq!(annihilator.1, 0);
+        assert_eq!(annihilator.2, 1);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef0123456789").unwrap();
+        let annihilator = boolean_function.annihilator(4).unwrap();
+        assert_eq!(annihilator.0.printable_hex_truth_table(), "1010101010101010");
+        assert_eq!(annihilator.1, 3);
+        assert_eq!(annihilator.2, 25);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        let annihilator = boolean_function.annihilator(4);
+        assert!(annihilator.is_none());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let annihilator = boolean_function.annihilator(4).unwrap();
+        assert_eq!(annihilator.0.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        assert_eq!(annihilator.1, 0);
+        assert_eq!(annihilator.2, 163);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c44224422441188118822442244118811880400810a80e200425").unwrap();
+        let annihilator = boolean_function.annihilator(1);
+        assert!(annihilator.is_none());
+        let annihilator = boolean_function.annihilator(5).unwrap();
+        assert_eq!(annihilator.0.printable_hex_truth_table(), "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188");
+        assert_eq!(annihilator.1, 2);
+        assert_eq!(annihilator.2, 155);
+    }
+
+    #[test]
+    fn test_algebraic_immunity() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c44224422441188118822442244118811880400810a80e200425").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 2);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 2);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 3);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 2);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert_eq!(boolean_function.algebraic_immunity(), 2);
     }
 }

@@ -16,14 +16,14 @@ pub struct AnfPolynomial {
 }
 
 impl AnfPolynomial {
-    pub(crate) fn from_truth_table_big(polynomial: BigUint, num_variables: usize) -> Self { // TODO check too big
+    pub(crate) fn from_anf_big(polynomial: &BigUint, num_variables: usize) -> Self { // TODO check too big
         AnfPolynomial {
-            polynomial: PolynomialFormat::Big(polynomial),
+            polynomial: PolynomialFormat::Big(polynomial.clone()),
             num_variables,
         }
     }
 
-    pub(crate) fn from_truth_table_small(polynomial: u64, num_variables: usize) -> Self { // TODO check too big
+    pub(crate) fn from_anf_small(polynomial: u64, num_variables: usize) -> Self { // TODO check too big
         AnfPolynomial {
             polynomial: PolynomialFormat::Small(polynomial),
             num_variables,
@@ -118,73 +118,73 @@ mod tests {
 
     #[test]
     fn test_get_polynomial_small() {
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(30, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), Some(30));
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), None);
     }
 
     #[test]
     fn test_get_polynomial_big() {
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(30, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from(30u32));
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
         assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap());
     }
 
     #[test]
     fn test_get_degree() {
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(0, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(0, 3);
         assert_eq!(anf_polynomial.get_degree(), 0);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(1, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(1, 3);
         assert_eq!(anf_polynomial.get_degree(), 0);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(0xff, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(0xff, 3);
         assert_eq!(anf_polynomial.get_degree(), 3);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::zero(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::zero(), 3);
         assert_eq!(anf_polynomial.get_degree(), 0);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::one(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::one(), 3);
         assert_eq!(anf_polynomial.get_degree(), 0);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from_str_radix("00000000000000000000000000000010", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("00000000000000000000000000000010", 16).unwrap(), 7);
         assert_eq!(anf_polynomial.get_degree(), 1);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from_str_radix("00000000000000000000000000001110", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("00000000000000000000000000001110", 16).unwrap(), 7);
         assert_eq!(anf_polynomial.get_degree(), 2);
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from_str_radix("f0000000000000000000000000001110", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("f0000000000000000000000000001110", 16).unwrap(), 7);
         assert_eq!(anf_polynomial.get_degree(), 7);
     }
 
     #[test]
     fn test_to_string() {
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(30, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(31, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(31, 3);
         assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2 + 1");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(0, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(0, 3);
         assert_eq!(anf_polynomial.to_string(), "0");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_small(1, 3);
+        let anf_polynomial = AnfPolynomial::from_anf_small(1, 3);
         assert_eq!(anf_polynomial.to_string(), "1");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from(30u32), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from(30u32), 3);
         assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::from(31u32), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from(31u32), 3);
         assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2 + 1");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::zero(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::zero(), 3);
         assert_eq!(anf_polynomial.to_string(), "0");
 
-        let anf_polynomial = AnfPolynomial::from_truth_table_big(BigUint::one(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::one(), 3);
         assert_eq!(anf_polynomial.to_string(), "1");
     }
 }

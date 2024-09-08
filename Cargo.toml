@@ -11,6 +11,7 @@ exclude = [".github/*"]
 
 [dependencies]
 num-traits = "0.2.19"
+num-integer = "0.1.46"
 num-bigint = "0.4.6"
 thiserror = "1.0.63"
 itertools = "0.13.0"

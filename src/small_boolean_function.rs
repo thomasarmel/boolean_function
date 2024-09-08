@@ -3,6 +3,9 @@ use crate::BooleanFunctionError::TooBigVariableCount;
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use std::any::Any;
+use itertools::{enumerate, Itertools};
+use num_integer::binomial;
+use crate::utils::left_kernel_boolean;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SmallBooleanFunction {
@@ -59,6 +62,61 @@ impl SmallBooleanFunction {
             variables_count: self.variables_count,
             truth_table: !self.truth_table & (u64::MAX >> (64 - (1 << self.variables_count))),
         }
+    }
+
+    pub fn annihilator_inner(&self, max_degree: usize) -> Option<(SmallBooleanFunction, usize, usize)> {
+        if self.truth_table == 0 {
+            let max_possible_function_tt = u64::MAX >> (64 - (1 << self.variables_count));
+            let dim_annihilator_vec_space = (0..=max_degree).map(|i| binomial(self.variables_count as u64, i as u64)).sum::<u64>() as usize;
+            return Some((Self::from_truth_table(max_possible_function_tt, self.variables_count).unwrap(), 0, dim_annihilator_vec_space));
+        }
+
+        let truth_table_non_zero_positions = (0u32..(1 << self.variables_count))
+            .filter(|bit_pos| self.truth_table & (1u64 << bit_pos) != 0)
+            .collect::<Vec<u32>>();
+
+        let matrix_out_len = (0..=max_degree).map(|i| binomial(self.variables_count as u64, i as u64)).sum::<u64>() as usize;
+        let matrix_in_len = truth_table_non_zero_positions.len();
+        let mut matrix: Vec<Vec<bool>> = vec![vec![false; matrix_in_len]; matrix_out_len];
+
+        let mut r = [AnfPolynomial::from_anf_small(0x1, self.variables_count)].to_vec();
+
+        for i in 1..=max_degree {
+            for comb in (0..self.variables_count).combinations(i) {
+                let mut bit_index = 0;
+                for monomial in comb {
+                    bit_index |= 1 << monomial;
+                }
+                let anf = 1u64 << bit_index;
+                r.push(AnfPolynomial::from_anf_small(anf, self.variables_count));
+            }
+        }
+
+        for (i, m) in enumerate(r.iter()) {
+            let truth_table = fast_bool_anf_transform_unsigned(m.get_polynomial_small().unwrap(), self.variables_count);
+            for (j, v) in enumerate(truth_table_non_zero_positions.iter()) {
+                matrix[i][j] = truth_table & (1u64 << v) != 0;
+            }
+        }
+
+        let left_kernel = left_kernel_boolean(&matrix);
+
+        if left_kernel.is_empty() {
+            return None;
+        }
+
+        let annihilator_anf = enumerate(r.iter())
+            .filter(|(i, _)| left_kernel[0][*i])
+            .map(|(_, v)| v.get_polynomial_small().unwrap())
+            .sum();
+
+        let annihilator_function = Self::from_truth_table(
+            fast_bool_anf_transform_unsigned(annihilator_anf, self.variables_count),
+            self.variables_count).unwrap();
+
+        let annihilator_degree = AnfPolynomial::from_anf_small(annihilator_anf, self.variables_count).get_degree();
+
+        Some((annihilator_function, annihilator_degree, left_kernel.len()))
     }
 }
 
@@ -119,7 +177,12 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     fn algebraic_normal_form(&self) -> AnfPolynomial {
         let anf_form = fast_bool_anf_transform_unsigned(self.truth_table, self.variables_count);
-        AnfPolynomial::from_truth_table_small(anf_form, self.variables_count)
+        AnfPolynomial::from_anf_small(anf_form, self.variables_count)
+    }
+
+    fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
+        let annihilator = self.annihilator_inner(max_degree)?;
+        Some((Box::new(annihilator.0), annihilator.1, annihilator.2))
     }
 
     fn printable_hex_truth_table(&self) -> String {
@@ -306,5 +369,62 @@ mod tests {
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0xabcdef0123456789, 6).unwrap();
         assert!(!boolean_function.is_linear());
+    }
+
+    #[test]
+    fn test_annihilator_inner() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        let annihilator = boolean_function.annihilator_inner(1).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0x55aa55aa);
+        assert_eq!(annihilator.1, 1);
+        assert_eq!(annihilator.2, 1);
+
+        let annihilator = boolean_function.annihilator_inner(6).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0x55aa55aa);
+        assert_eq!(annihilator.1, 1);
+        assert_eq!(annihilator.2, 16);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let annihilator = boolean_function.annihilator_inner(1);
+        assert!(annihilator.is_none());
+
+        let annihilator = boolean_function.annihilator_inner(2).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0xe1);
+        assert_eq!(annihilator.1, 2);
+        assert_eq!(annihilator.2, 3);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0, 4).unwrap();
+        let annihilator = boolean_function.annihilator_inner(0).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0xffff);
+        assert_eq!(annihilator.1, 0);
+        assert_eq!(annihilator.2, 1);
+
+        let annihilator = boolean_function.annihilator_inner(3).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0xffff);
+        assert_eq!(annihilator.1, 0);
+        assert_eq!(annihilator.2, 15);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
+        let annihilator = boolean_function.annihilator_inner(6);
+        assert!(annihilator.is_none());
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xabcdef0123456789, 6).unwrap();
+        let annihilator = boolean_function.annihilator_inner(2);
+        assert!(annihilator.is_none());
+
+        let annihilator = boolean_function.annihilator_inner(3);
+        assert_eq!(annihilator.unwrap().0.get_truth_table_u64(), 0x1010101010101010);
+        assert_eq!(annihilator.unwrap().1, 3);
+        assert_eq!(annihilator.unwrap().2, 10);
+
+        let annihilator = boolean_function.annihilator_inner(4);
+        assert_eq!(annihilator.unwrap().0.get_truth_table_u64(), 0x1010101010101010);
+        assert_eq!(annihilator.unwrap().1, 3);
+        assert_eq!(annihilator.unwrap().2, 25);
+
+        let annihilator = boolean_function.annihilator_inner(5);
+        assert_eq!(annihilator.unwrap().0.get_truth_table_u64(), 0x1010101010101010);
+        assert_eq!(annihilator.unwrap().1, 3);
+        assert_eq!(annihilator.unwrap().2, 31);
     }
 }
