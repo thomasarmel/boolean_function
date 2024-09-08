@@ -82,13 +82,12 @@ impl BigBooleanFunction {
         }
 
         for (i, m) in enumerate(r.iter()) {
-            let truth_table = fast_anf_transform_biguint(&m.get_polynomial_big(), self.variables_count);
+            let truth_table = fast_anf_transform_biguint(&m.get_polynomial_big(), self.variables_count); // performance bottleneck
             for (j, v) in enumerate(truth_table_non_zero_positions.iter()) {
-                matrix[i][j] = truth_table.clone() & (BigUint::one() << v) != BigUint::zero();
+                matrix[i][j] = truth_table.bit(*v as u64)
             }
         }
 
-        // kernel
         let left_kernel = left_kernel_boolean(&matrix);
 
         if left_kernel.is_empty() {

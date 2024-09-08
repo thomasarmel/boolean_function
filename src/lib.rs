@@ -167,6 +167,11 @@ pub trait BooleanFunctionImpl: Debug + Any {
         }
     }
 
+    fn is_plateaued(&self) -> bool {
+        let absolute_walsh_spectrum = self.absolute_walsh_spectrum();
+        absolute_walsh_spectrum.len() == 1 || (absolute_walsh_spectrum.len() == 2 && absolute_walsh_spectrum.contains_key(&0))
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -238,6 +243,8 @@ fn boolean_function_from_hex_string_truth_table(
         )))
     }
 }
+
+// TODO from polynomial etc.
 
 #[cfg(test)]
 mod tests {
@@ -706,5 +713,20 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 2);
+    }
+
+    #[test]
+    fn test_is_plateaued() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        assert!(boolean_function.is_plateaued());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("8778").unwrap();
+        assert!(boolean_function.is_plateaued());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert!(boolean_function.is_plateaued());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890").unwrap();
+        assert!(!boolean_function.is_plateaued());
     }
 }
