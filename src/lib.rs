@@ -188,6 +188,11 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    fn has_linear_structure(&self) -> bool {
+        (1..=self.get_max_input_value())
+            .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.get_num_variables())
+    }
+
     /// https://www.sciencedirect.com/topics/mathematics/linear-structure
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
@@ -808,5 +813,23 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
         assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    }
+
+    #[test]
+    fn test_has_linear_structure() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("659a").unwrap();
+        assert!(boolean_function.has_linear_structure());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
+        assert!(!boolean_function.has_linear_structure());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        assert!(boolean_function.has_linear_structure());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert!(boolean_function.has_linear_structure());
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        assert!(!boolean_function.has_linear_structure());
     }
 }
