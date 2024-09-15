@@ -193,6 +193,21 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.get_num_variables())
     }
 
+    /// Will panic if value > max_input_value
+    fn is_linear_structure(&self, value: u32) -> bool {
+        #[cfg(debug_assertions)] // TODO
+        {
+            let max_input_value = self.get_max_input_value();
+            if value > max_input_value {
+                panic!(
+                    "Too big value parameter, must be <= {}",
+                    max_input_value
+                );
+            }
+        }
+        self.auto_correlation_transform(value).unsigned_abs() == 1 << self.get_num_variables()
+    }
+
     /// https://www.sciencedirect.com/topics/mathematics/linear-structure
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
@@ -831,5 +846,13 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert!(!boolean_function.has_linear_structure());
+    }
+
+    #[test]
+    fn test_is_linear_structure() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("659a").unwrap();
+        assert!(boolean_function.is_linear_structure(1));
+        assert!(!boolean_function.is_linear_structure(7));
+        assert!(boolean_function.is_linear_structure(9));
     }
 }
