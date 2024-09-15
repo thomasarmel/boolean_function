@@ -115,6 +115,14 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_autocorrelation_value_count_map
     }
 
+    /// https://www.researchgate.net/publication/322383819_Distribution_of_the_absolute_indicator_of_random_Boolean_functions
+    /// Max autocorrelation from w=1 to max_input_value
+    fn absolute_indicator(&self) -> u32 {
+        (1..=self.get_max_input_value())
+            .map(|w| self.auto_correlation_transform(w).unsigned_abs())
+            .max().unwrap_or(0)
+    }
+
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError>;
 
     fn is_linear(&self) -> bool;
@@ -751,5 +759,23 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
         assert_eq!(boolean_function.sum_of_square_indicator(), 32768);
+    }
+
+    #[test]
+    fn test_absolute_indicator() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 8);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 32);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 16);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 128);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 32);
     }
 }
