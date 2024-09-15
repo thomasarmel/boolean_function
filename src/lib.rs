@@ -188,6 +188,13 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    /// https://www.sciencedirect.com/topics/mathematics/linear-structure
+    fn linear_structures(&self) -> Vec<u32> {
+        (0..=self.get_max_input_value())
+            .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.get_num_variables())
+            .collect()
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -777,5 +784,29 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 32);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.absolute_indicator(), 32);
+    }
+
+    #[test]
+    fn test_linear_structures() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0, 4]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0, 64]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
     }
 }
