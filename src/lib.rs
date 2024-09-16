@@ -59,6 +59,13 @@ pub trait BooleanFunctionImpl: Debug + Any {
             })
             .sum()
     }
+
+    fn walsh_hadamard_values(&self) -> Vec<i32> {
+        (0..=self.get_max_input_value())
+            .map(|w| self.walsh_hadamard_transform(w))
+            .collect()
+    }
+
     fn absolute_walsh_spectrum(&self) -> HashMap<u32, usize> {
         let mut absolute_walsh_value_count_map: HashMap<u32, usize> = HashMap::new();
         (0..=self.get_max_input_value()).for_each(|w| {
@@ -854,5 +861,17 @@ mod tests {
         assert!(boolean_function.is_linear_structure(1));
         assert!(!boolean_function.is_linear_structure(7));
         assert!(boolean_function.is_linear_structure(9));
+    }
+
+    #[test]
+    fn test_walsh_hadamard_values() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
+        assert_eq!(boolean_function.walsh_hadamard_values(), [-2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
+        assert_eq!(boolean_function.walsh_hadamard_values(), [16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
+        assert_eq!(boolean_function.walsh_hadamard_values(), [-16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 }
