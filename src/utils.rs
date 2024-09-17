@@ -134,10 +134,11 @@ pub(crate) fn fast_anf_transform_biguint(truth_table: &BigUint, variables_count:
     anf_form
 }
 
+#[allow(dead_code)] // maybe useless, but I keep it for the beauty of the code
 pub(crate) fn walsh_matrix(dim: usize) -> Vec<Vec<i8>> {
-    (0..(1 << dim)).map(|y| {
+    (0usize..(1 << dim)).map(|y| {
         (0..(1 << dim)).map(|x| {
-            if i32::from_str_radix(&format!("{:b}", x & y), 13).unwrap() & 1 == 0 {
+            if (x & y).count_ones() & 1 == 0 {
                 1
             } else {
                 -1

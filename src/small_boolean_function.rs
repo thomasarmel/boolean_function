@@ -118,6 +118,28 @@ impl SmallBooleanFunction {
 
         Some((annihilator_function, annihilator_degree, left_kernel.len()))
     }
+
+    /// Reverse walsh transform
+    pub fn from_walsh_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
+        let walsh_values_count = walsh_values.len();
+        if walsh_values_count < 2 || walsh_values_count.count_ones() != 1 {
+            return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
+        }
+        let num_variables = walsh_values_count.trailing_zeros() as usize;
+        let mut truth_table = 0u64;
+        for i in 0..(1 << num_variables) {
+            let value = walsh_values.iter().enumerate()
+                .map(|(w, walsh_value)|walsh_value * ( if (w & i).count_ones() & 1 == 0 {1} else {-1}))
+                .sum::<i32>() < 0;
+            if value {
+                truth_table |= 1 << i;
+            }
+        }
+        Ok(Self {
+            variables_count: num_variables,
+            truth_table,
+        })
+    }
 }
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
@@ -426,5 +448,36 @@ mod tests {
         assert_eq!(annihilator.unwrap().0.get_truth_table_u64(), 0x1010101010101010);
         assert_eq!(annihilator.unwrap().1, 3);
         assert_eq!(annihilator.unwrap().2, 31);
+    }
+
+    #[test]
+    fn test_from_walsh_values() {
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[-2, 2, 2, 2]).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xe);
+        assert_eq!(boolean_function.get_num_variables(), 2);
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[-8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xff);
+        assert_eq!(boolean_function.get_num_variables(), 3);
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0x00);
+        assert_eq!(boolean_function.get_num_variables(), 3);
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0, 0, 0, 0, -4, 4, 4, 4]).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0x1e);
+        assert_eq!(boolean_function.get_num_variables(), 3);
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0, 0, 0, 0, 4, -4, -4, -4]).unwrap();
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xe1);
+        assert_eq!(boolean_function.get_num_variables(), 3);
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0, 0, 0, 0, 4, -4, -4]);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(7));
+
+        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0]);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(1));
     }
 }

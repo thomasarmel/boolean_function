@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum BooleanFunctionError {
     #[error("Hex truth table length must be a power of 2")]
     WrongStringHexTruthTableLength,
@@ -12,4 +12,6 @@ pub enum BooleanFunctionError {
     UnexpectedError,
     #[error("Too big derivative direction, must be <= {0}")]
     TooBigDerivativeDirection(u32),
+    #[error("Invalid number of Walsh values {0}, should be 2^n, n >= 1")]
+    InvalidWalshValuesCount(usize),
 }
