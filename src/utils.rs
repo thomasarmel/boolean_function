@@ -134,6 +134,18 @@ pub(crate) fn fast_anf_transform_biguint(truth_table: &BigUint, variables_count:
     anf_form
 }
 
+pub(crate) fn walsh_matrix(dim: usize) -> Vec<Vec<i8>> {
+    (0..(1 << dim)).map(|y| {
+        (0..(1 << dim)).map(|x| {
+            if i32::from_str_radix(&format!("{:b}", x & y), 13).unwrap() & 1 == 0 {
+                1
+            } else {
+                -1
+            }
+        }).collect()
+    }).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::utils::left_kernel_boolean;
@@ -154,5 +166,13 @@ mod tests {
         let left_kernel = left_kernel_boolean(&matrix);
 
         assert_eq!(left_kernel, [[true, true, false, false, false, false, false], [false, false, true, false, false, false, false], [false, false, false, true, false, false, false], [false, false, false, false, true, false, false], [false, false, false, false, false, true, false], [false, false, false, false, false, false, true]]);
+    }
+
+    #[test]
+    fn test_walsh_matrix() {
+        assert_eq!(super::walsh_matrix(0), vec![vec![1]]);
+        assert_eq!(super::walsh_matrix(1), vec![vec![1, 1], vec![1, -1]]);
+        assert_eq!(super::walsh_matrix(2), vec![vec![1, 1, 1, 1], vec![1, -1, 1, -1], vec![1, 1, -1, -1], vec![1, -1, -1, 1]]);
+        assert_eq!(super::walsh_matrix(3), vec![vec![1, 1, 1, 1, 1, 1, 1, 1], vec![1, -1, 1, -1, 1, -1, 1, -1], vec![1, 1, -1, -1, 1, 1, -1, -1], vec![1, -1, -1, 1, 1, -1, -1, 1], vec![1, 1, 1, 1, -1, -1, -1, -1], vec![1, -1, 1, -1, -1, 1, -1, 1], vec![1, 1, -1, -1, -1, -1, 1, 1], vec![1, -1, -1, 1, -1, 1, 1, -1]]);
     }
 }
