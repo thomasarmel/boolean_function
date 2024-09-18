@@ -222,6 +222,21 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .collect()
     }
 
+    /// Xiao Massey theorem
+    fn correlation_immunity(&self) -> usize {
+        (1..=self.get_max_input_value())
+            .filter(|x| self.walsh_hadamard_transform(*x) != 0)
+            .map(|x| x.count_ones() as usize)
+            .min().unwrap_or(self.get_num_variables() + 1) - 1
+    }
+
+    fn resiliency_order(&self) -> Option<usize> {
+        if !self.is_balanced() {
+            return None;
+        }
+        Some(self.correlation_immunity())
+    }
+
     fn printable_hex_truth_table(&self) -> String;
 
     /// Use Clone instead of this method
@@ -912,5 +927,47 @@ mod tests {
         let boolean_function = super::boolean_function_from_reverse_walsh_transform(&[128]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), InvalidWalshValuesCount(1));
+    }
+
+    #[test]
+    fn test_correlation_immunity() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 1);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1f").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 4);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 7);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.correlation_immunity(), 2);
+    }
+
+    #[test]
+    fn test_resiliency_order() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), None);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), Some(1));
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1f").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), None);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), None);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), None);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        assert_eq!(boolean_function.resiliency_order(), Some(2));
     }
 }
