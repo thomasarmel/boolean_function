@@ -247,7 +247,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     // TODO almost bent, mul (and tt), sum, impl not, iterate on values
 }
 
-pub type BooleanFunction = Box<dyn BooleanFunctionImpl>;
+pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
 
 impl Clone for BooleanFunction {
     fn clone(&self) -> Self {
