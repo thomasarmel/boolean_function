@@ -122,7 +122,7 @@ impl SmallBooleanFunction {
     /// Reverse walsh transform
     pub fn from_walsh_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
-        if walsh_values_count < 2 || walsh_values_count.count_ones() != 1 {
+        if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
             return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
         }
         let num_variables = walsh_values_count.trailing_zeros() as usize;

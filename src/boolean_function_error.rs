@@ -12,6 +12,6 @@ pub enum BooleanFunctionError {
     UnexpectedError,
     #[error("Too big derivative direction, must be <= {0}")]
     TooBigDerivativeDirection(u32),
-    #[error("Invalid number of Walsh values {0}, should be 2^n, n >= 1")]
+    #[error("Invalid number of Walsh values {0}, should be 2^n, n >= 2")]
     InvalidWalshValuesCount(usize),
 }
