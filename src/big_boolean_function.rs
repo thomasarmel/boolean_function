@@ -199,10 +199,6 @@ impl BooleanFunctionImpl for BigBooleanFunction {
         format!("{:01$x}", self.truth_table, 1 << (self.variables_count - 2))
     }
 
-    fn __clone(&self) -> BooleanFunction {
-        Box::new(self.clone())
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

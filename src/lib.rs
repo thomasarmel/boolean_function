@@ -239,9 +239,6 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn printable_hex_truth_table(&self) -> String;
 
-    /// Use Clone instead of this method
-    fn __clone(&self) -> BooleanFunction;
-
     fn as_any(&self) -> &dyn Any;
 
     // TODO almost bent, mul (and tt), sum, impl not, iterate on values
@@ -251,7 +248,10 @@ pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
 
 impl Clone for BooleanFunction {
     fn clone(&self) -> Self {
-        self.__clone()
+        match self.get_boolean_function_type() {
+            BooleanFunctionType::Small => Box::new(self.as_any().downcast_ref::<SmallBooleanFunction>().unwrap().clone()),
+            BooleanFunctionType::Big => Box::new(self.as_any().downcast_ref::<BigBooleanFunction>().unwrap().clone()),
+        }
     }
 }
 
