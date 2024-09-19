@@ -3,8 +3,10 @@ use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanF
 use num_bigint::BigUint;
 use num_traits::{One, Zero};
 use std::any::Any;
+use std::ops::{BitXor, BitXorAssign};
 use itertools::{enumerate, Itertools};
 use num_integer::binomial;
+use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -199,7 +201,33 @@ impl BooleanFunctionImpl for BigBooleanFunction {
         format!("{:01$x}", self.truth_table, 1 << (self.variables_count - 2))
     }
 
+    fn biguint_truth_table(&self) -> BigUint {
+        self.truth_table.clone()
+    }
+
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl BitXorAssign for BigBooleanFunction {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        if self.variables_count != rhs.variables_count {
+            panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
+        }
+        self.truth_table ^= rhs.truth_table;
+    }
+}
+
+impl BitXor for BigBooleanFunction {
+    type Output = Self;
+
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self ^= rhs;
         self
     }
 }
@@ -509,5 +537,23 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_walsh_values(&[0]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(1));
+    }
+
+    #[test]
+    fn test_xor() {
+        let mut boolean_function = BigBooleanFunction::from_truth_table(BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap(), 7);
+        let boolean_function2 = BigBooleanFunction::from_truth_table(BigUint::from_str_radix("22442244118811882244224411881188", 16).unwrap(), 7);
+        let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
+        boolean_function ^= boolean_function2;
+        assert_eq!(boolean_function.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
+        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function3.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
+        assert_eq!(boolean_function3.get_num_variables(), 7);
+    }
+
+    #[test]
+    fn test_biguint_truth_table() {
+        let boolean_function = BigBooleanFunction::from_truth_table(BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap(), 7);
+        assert_eq!(boolean_function.biguint_truth_table(), BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap());
     }
 }

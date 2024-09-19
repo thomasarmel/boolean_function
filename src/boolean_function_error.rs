@@ -15,3 +15,5 @@ pub enum BooleanFunctionError {
     #[error("Invalid number of Walsh values {0}, should be 2^n, n >= 2")]
     InvalidWalshValuesCount(usize),
 }
+
+pub(crate) const XOR_DIFFERENT_VAR_COUNT_PANIC_MSG: &'static str = "XOR operation requires the same number of variables in both functions";

@@ -3,8 +3,11 @@ use crate::BooleanFunctionError::TooBigVariableCount;
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use std::any::Any;
+use std::ops::{BitXor, BitXorAssign};
 use itertools::{enumerate, Itertools};
+use num_bigint::BigUint;
 use num_integer::binomial;
+use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::utils::left_kernel_boolean;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -211,7 +214,33 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
         format!("{:01$x}", self.truth_table, 1 << (self.variables_count - 2))
     }
 
+    fn biguint_truth_table(&self) -> BigUint {
+        BigUint::from(self.truth_table)
+    }
+
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl BitXorAssign for SmallBooleanFunction {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        if self.variables_count != rhs.variables_count {
+            panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
+        }
+        self.truth_table ^= rhs.truth_table;
+    }
+}
+
+impl BitXor for SmallBooleanFunction {
+    type Output = Self;
+
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self ^= rhs;
         self
     }
 }
@@ -475,5 +504,23 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_walsh_values(&[0]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(1));
+    }
+
+    #[test]
+    fn test_xor() {
+        let mut boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let boolean_function2 = SmallBooleanFunction::from_truth_table(0xab, 3).unwrap();
+        let boolean_function3 = boolean_function ^ boolean_function2;
+        boolean_function ^= boolean_function2;
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xb5);
+        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function3.get_truth_table_u64(), 0xb5);
+        assert_eq!(boolean_function3.get_num_variables(), 3);
+    }
+
+    #[test]
+    fn test_biguint_truth_table() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        assert_eq!(boolean_function.biguint_truth_table().to_string(), "30");
     }
 }
