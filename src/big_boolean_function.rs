@@ -111,7 +111,7 @@ impl BigBooleanFunction {
     }
 
     /// Reverse walsh transform
-    pub fn from_walsh_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
+    pub fn from_walsh_hadamard_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
         if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
             return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
@@ -122,6 +122,27 @@ impl BigBooleanFunction {
             let value = walsh_values.iter().enumerate()
                 .map(|(w, walsh_value)|walsh_value * ( if (w & i).count_ones() & 1 == 0 {1} else {-1}))
                 .sum::<i32>() < 0;
+            if value {
+                truth_table.set_bit(i as u64, true);
+            }
+        }
+        Ok(Self {
+            variables_count: num_variables,
+            truth_table,
+        })
+    }
+
+    pub fn from_walsh_fourier_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
+        let walsh_values_count = walsh_values.len();
+        if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
+            return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
+        }
+        let num_variables = walsh_values_count.trailing_zeros() as usize;
+        let mut truth_table = BigUint::zero();
+        for i in 0..(1 << num_variables) {
+            let value = walsh_values.iter().enumerate()
+                .map(|(w, walsh_value)|walsh_value * ( if (w & i).count_ones() & 1 == 0 {1} else {-1}))
+                .sum::<i32>() != 0;
             if value {
                 truth_table.set_bit(i as u64, true);
             }
@@ -234,7 +255,7 @@ impl BitXor for BigBooleanFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BigBooleanFunction, BooleanFunctionImpl, SmallBooleanFunction};
+    use crate::{BigBooleanFunction, BooleanFunctionImpl};
     use num_bigint::BigUint;
     use num_traits::{Num, One, Zero};
 
@@ -517,24 +538,24 @@ mod tests {
     }
 
     #[test]
-    fn test_from_walsh_values() {
-        let boolean_function = BigBooleanFunction::from_walsh_values(&[-128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+    fn test_from_walsh_hadamard_values() {
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[-128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffff");
 
-        let boolean_function = BigBooleanFunction::from_walsh_values(&[128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "00000000000000000000000000000000");
 
-        let boolean_function = BigBooleanFunction::from_walsh_values(&[128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8, 8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8, 8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16, 0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0, 0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8, -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12, -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12, -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4, -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60, -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84, -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12, -4, -12, -12, -20, -20, 4, 4, -4]).unwrap();
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8, 8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8, 8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16, 0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0, 0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8, -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12, -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12, -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4, -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60, -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84, -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12, -4, -12, -12, -20, -20, 4, 4, -4]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "80921c010276c44224422441188118822442244118811880400810a80e200425");
 
-        let boolean_function = BigBooleanFunction::from_walsh_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -64, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -64, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "22442244118811882244224411881188");
 
-        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0, 0, 0, 0, 4, -4, -4]);
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[0, 0, 0, 0, 4, -4, -4]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(7));
 
-        let boolean_function = SmallBooleanFunction::from_walsh_values(&[0]);
+        let boolean_function = BigBooleanFunction::from_walsh_hadamard_values(&[0]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), crate::BooleanFunctionError::InvalidWalshValuesCount(1));
     }
@@ -555,5 +576,24 @@ mod tests {
     fn test_biguint_truth_table() {
         let boolean_function = BigBooleanFunction::from_truth_table(BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap(), 7);
         assert_eq!(boolean_function.biguint_truth_table(), BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap());
+    }
+
+    #[test]
+    fn test_from_walsh_fourier_values() {
+        let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "8001");
+
+        let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "ff");
+
+        let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00");
+
+        let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[4, -4, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "aa");
+
+        let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffffffffffff");
+        assert_eq!(boolean_function.get_num_variables(), 6);
     }
 }
