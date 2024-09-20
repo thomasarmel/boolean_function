@@ -14,7 +14,7 @@ use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign};
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
@@ -193,6 +193,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Meaning maximally nonlinear
     /// All derivative are balanced
+    /// Rothaus: f bent => deg(f) <= n/2
     fn is_bent(&self) -> bool {
         if self.get_num_variables() & 1 != 0 {
             return false;
@@ -267,6 +268,14 @@ pub trait BooleanFunctionImpl: Debug + Any {
             return None;
         }
         Some(self.correlation_immunity())
+    }
+
+
+    /// All inputs x such that f(x) = 1
+    fn support(&self) -> HashSet<u32> {
+        (0..=self.get_max_input_value())
+            .filter(|x| self.compute_cellular_automata_rule(*x))
+            .collect()
     }
 
     fn printable_hex_truth_table(&self) -> String;
@@ -1175,5 +1184,17 @@ mod tests {
         assert_eq!(boolean_function2.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Big);
         assert_eq!(boolean_function2.get_num_variables(), 9);
+    }
+
+    #[test]
+    fn test_support() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00").unwrap();
+        assert_eq!(boolean_function.support().len(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ff").unwrap();
+        assert_eq!(boolean_function.support().len(), 8);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        assert_eq!(boolean_function.support().len(), 4);
     }
 }
