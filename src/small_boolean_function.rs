@@ -32,6 +32,13 @@ impl SmallBooleanFunction {
         })
     }
 
+    pub(crate) const fn from_truth_table_unchecked(truth_table: u64, variables_count: usize) -> Self {
+        SmallBooleanFunction {
+            variables_count,
+            truth_table,
+        }
+    }
+
     pub fn get_truth_table_u64(&self) -> u64 {
         self.truth_table
     }
