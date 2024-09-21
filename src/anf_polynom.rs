@@ -2,6 +2,8 @@ use itertools::Itertools;
 use num_bigint::BigUint;
 use std::fmt::Display;
 use num_traits::{One, Zero};
+#[cfg(not(feature = "unsafe_disable_safety_checks"))]
+use crate::boolean_function_error::POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum PolynomialFormat {
@@ -16,14 +18,22 @@ pub struct AnfPolynomial {
 }
 
 impl AnfPolynomial {
-    pub(crate) fn from_anf_big(polynomial: &BigUint, num_variables: usize) -> Self { // TODO check too big
+    pub(crate) fn from_anf_big(polynomial: &BigUint, num_variables: usize) -> Self {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if polynomial.bits() > (1 << num_variables) {
+            panic!("{}", POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG);
+        }
         AnfPolynomial {
             polynomial: PolynomialFormat::Big(polynomial.clone()),
             num_variables,
         }
     }
 
-    pub(crate) fn from_anf_small(polynomial: u64, num_variables: usize) -> Self { // TODO check too big
+    pub(crate) fn from_anf_small(polynomial: u64, num_variables: usize) -> Self {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if polynomial > (u64::MAX >> (64 - (1 << num_variables))) {
+            panic!("{}", POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG);
+        }
         AnfPolynomial {
             polynomial: PolynomialFormat::Small(polynomial),
             num_variables,
@@ -121,7 +131,7 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), Some(30));
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("30", 16).unwrap(), 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), None);
     }
 
@@ -130,7 +140,7 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from(30u32));
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 3);
+        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 7);
         assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap());
     }
 

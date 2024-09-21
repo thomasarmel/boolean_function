@@ -1,4 +1,6 @@
 use crate::anf_polynom::AnfPolynomial;
+#[cfg(not(feature = "unsafe_disable_safety_checks"))]
+use crate::BooleanFunctionError::TooBigTruthTableForVarCount;
 use crate::BooleanFunctionError::TooBigVariableCount;
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
@@ -7,6 +9,7 @@ use std::ops::{BitXor, BitXorAssign};
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
+#[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::utils::left_kernel_boolean;
 
@@ -23,8 +26,11 @@ impl SmallBooleanFunction {
         variables_count: usize,
     ) -> Result<Self, BooleanFunctionError> {
         if variables_count > 6 {
-            // TODO skip test if needed, maybe create another function
             return Err(TooBigVariableCount(6));
+        }
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if truth_table > (u64::MAX >> (64 - (1 << variables_count))) {
+            return Err(TooBigTruthTableForVarCount);
         }
         Ok(SmallBooleanFunction {
             variables_count,
@@ -44,7 +50,7 @@ impl SmallBooleanFunction {
     }
 
     pub fn derivative_inner(&self, direction: u32) -> Result<Self, BooleanFunctionError> {
-        #[cfg(debug_assertions)]
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
             let max_input_value = self.get_max_input_value();
             if direction > max_input_value {
@@ -190,7 +196,7 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     #[inline]
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool {
-        #[cfg(debug_assertions)]
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
             let max_input_value = self.get_max_input_value();
             if input_bits > max_input_value {
@@ -257,7 +263,8 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
 impl BitXorAssign for SmallBooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
-        if self.variables_count != rhs.variables_count { // TODO only for debug
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if self.variables_count != rhs.variables_count {
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
         self.truth_table ^= rhs.truth_table;

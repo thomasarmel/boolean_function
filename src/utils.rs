@@ -47,7 +47,7 @@ fn boolean_gaussian_elimination(matrix: &mut Vec<Vec<bool>>) -> Vec<Vec<bool>> {
     matrix.clone()
 }
 
-pub(crate) fn left_kernel_boolean(matrix: &Vec<Vec<bool>>) -> Vec<Vec<bool>> { // TODO add option to calculate only first row, in order to speed up
+pub(crate) fn left_kernel_boolean(matrix: &Vec<Vec<bool>>) -> Vec<Vec<bool>> {
     if matrix.is_empty() || matrix[0].is_empty() {
         return Vec::new();
     }

@@ -44,7 +44,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool;
     fn walsh_hadamard_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
-        #[cfg(debug_assertions)] // TODO
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
                 "Too big Walsh parameter direction, must be <= {}",
@@ -91,7 +91,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn walsh_fourier_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
-        #[cfg(debug_assertions)] // TODO
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
                 "Too big Walsh parameter direction, must be <= {}",
@@ -121,7 +121,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn auto_correlation_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
-        #[cfg(debug_assertions)] // TODO
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
                 "Too big Walsh parameter direction, must be <= {}",
@@ -240,7 +240,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Will panic if value > max_input_value
     fn is_linear_structure(&self, value: u32) -> bool {
-        #[cfg(debug_assertions)] // TODO
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
             let max_input_value = self.get_max_input_value();
             if value > max_input_value {
@@ -334,7 +334,6 @@ impl Clone for BooleanFunction {
 impl PartialEq for BooleanFunction {
     fn eq(&self, other: &Self) -> bool {
         if self.get_boolean_function_type() != other.get_boolean_function_type() {
-            // TODO compare type id
             return false;
         }
         match self.get_boolean_function_type() {

@@ -6,6 +6,9 @@ use std::any::Any;
 use std::ops::{BitXor, BitXorAssign};
 use itertools::{enumerate, Itertools};
 use num_integer::binomial;
+#[cfg(not(feature = "unsafe_disable_safety_checks"))]
+use crate::boolean_function_error::TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG;
+#[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 
@@ -17,7 +20,10 @@ pub struct BigBooleanFunction {
 
 impl BigBooleanFunction {
     pub fn from_truth_table(truth_table: BigUint, variables_count: usize) -> Self {
-        // TODO check too big for variables_count
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if truth_table.bits() > (1 << variables_count) {
+            panic!("{}", TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG);
+        }
         BigBooleanFunction {
             variables_count,
             truth_table,
@@ -25,7 +31,7 @@ impl BigBooleanFunction {
     }
 
     pub fn derivative_inner(&self, direction: u32) -> Result<Self, BooleanFunctionError> {
-        #[cfg(debug_assertions)]
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
             let max_input_value = self.get_max_input_value();
             if direction > max_input_value {
@@ -170,7 +176,7 @@ impl BooleanFunctionImpl for BigBooleanFunction {
 
     #[inline]
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool {
-        #[cfg(debug_assertions)] // TODO use a feature instead, like "unsafe_skip_safety_tests"
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
             let max_input_value = self.get_max_input_value();
             if input_bits > max_input_value {
@@ -237,7 +243,8 @@ impl BooleanFunctionImpl for BigBooleanFunction {
 
 impl BitXorAssign for BigBooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
-        if self.variables_count != rhs.variables_count {  // TODO only for debug
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if self.variables_count != rhs.variables_count {
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
         self.truth_table ^= rhs.truth_table;
