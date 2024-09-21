@@ -257,7 +257,7 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
 impl BitXorAssign for SmallBooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
-        if self.variables_count != rhs.variables_count {
+        if self.variables_count != rhs.variables_count { // TODO only for debug
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
         self.truth_table ^= rhs.truth_table;

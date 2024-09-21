@@ -3,6 +3,7 @@ mod big_boolean_function;
 mod boolean_function_error;
 mod small_boolean_function;
 mod utils;
+mod affine_equivalence_classes;
 
 use crate::anf_polynom::AnfPolynomial;
 use crate::BooleanFunctionError::{
@@ -10,6 +11,9 @@ use crate::BooleanFunctionError::{
 };
 pub use big_boolean_function::BigBooleanFunction;
 pub use boolean_function_error::BooleanFunctionError;
+pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_3_VAR_AFFINE_EQ_CLASSES;
+pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_4_VAR_AFFINE_EQ_CLASSES;
+pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_5_VAR_AFFINE_EQ_CLASSES;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
@@ -17,6 +21,7 @@ use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign};
+use gen_combinations::CombinationIterator;
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -276,6 +281,28 @@ pub trait BooleanFunctionImpl: Debug + Any {
         (0..=self.get_max_input_value())
             .filter(|x| self.compute_cellular_automata_rule(*x))
             .collect()
+    }
+
+    fn propagation_criterion(&self) -> usize {
+        let num_variables = self.get_num_variables();
+        let max_input_value = self.get_max_input_value();
+        let possible_reversable_bit_position = (0..num_variables).into_iter().collect::<Vec<usize>>();
+        (1..=num_variables).into_iter()
+            .take_while(|criterion_degree| {
+                CombinationIterator::new(&possible_reversable_bit_position, *criterion_degree)
+                    .all(|combination| {
+                        let mut bit_mask = 0;
+                        for &bit_position in combination {
+                            bit_mask |= (1 << bit_position) as u32;
+                        }
+                        let function_equal_mask_count = (0..=max_input_value).into_iter().filter(|&x| {
+                            let x_prime = x ^ bit_mask;
+                            self.compute_cellular_automata_rule(x) == self.compute_cellular_automata_rule(x_prime)
+                        }).count();
+                        function_equal_mask_count == (1 << (num_variables - 1))
+                    })
+            })
+            .count()
     }
 
     fn printable_hex_truth_table(&self) -> String;
@@ -1196,5 +1223,17 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert_eq!(boolean_function.support().len(), 4);
+    }
+
+    #[test]
+    fn test_propagation_criterion() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("00").unwrap();
+        assert_eq!(boolean_function.propagation_criterion(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("ff").unwrap();
+        assert_eq!(boolean_function.propagation_criterion(), 0);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("288d1b41").unwrap();
+        assert_eq!(boolean_function.propagation_criterion(), 3);
     }
 }
