@@ -11,6 +11,7 @@ use num_bigint::BigUint;
 use num_integer::binomial;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+use crate::iterator::BooleanFunctionIterator;
 use crate::utils::left_kernel_boolean;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -242,6 +243,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
     fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
         let annihilator = self.annihilator_inner(max_degree)?;
         Some((Box::new(annihilator.0), annihilator.1, annihilator.2))
+    }
+
+    fn iter(&self) -> BooleanFunctionIterator {
+        BooleanFunctionIterator::new(Box::new(self.clone()))
     }
 
     fn printable_hex_truth_table(&self) -> String {
@@ -589,5 +594,20 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_walsh_fourier_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0xffffffffffffffff);
         assert_eq!(boolean_function.get_num_variables(), 6);
+    }
+
+    #[test]
+    fn test_iter() {
+        let boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let mut iter = boolean_function.iter();
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), false);
+        assert!(iter.next().is_none());
     }
 }

@@ -10,6 +10,7 @@ use num_integer::binomial;
 use crate::boolean_function_error::TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+use crate::iterator::BooleanFunctionIterator;
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -222,6 +223,10 @@ impl BooleanFunctionImpl for BigBooleanFunction {
     fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
         let annihilator = self.annihilator_inner(max_degree)?;
         Some((Box::new(annihilator.0), annihilator.1, annihilator.2))
+    }
+
+    fn iter(&self) -> BooleanFunctionIterator {
+        BooleanFunctionIterator::new(Box::new(self.clone()))
     }
 
     fn printable_hex_truth_table(&self) -> String {
@@ -614,5 +619,19 @@ mod tests {
         let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffffffffffff");
         assert_eq!(boolean_function.get_num_variables(), 6);
+    }
+
+    #[test]
+    fn test_iter() {
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
+            8,
+        );
+        let mut iterator = boolean_function.iter();
+        assert_eq!(iterator.next(), Some(false));
+        assert_eq!(iterator.next(), Some(false));
+        assert_eq!(iterator.next(), Some(false));
+        assert_eq!(iterator.next(), Some(false));
+        assert_eq!(iterator.next(), Some(true));
     }
 }

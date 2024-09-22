@@ -4,6 +4,7 @@ mod boolean_function_error;
 mod small_boolean_function;
 mod utils;
 mod affine_equivalence_classes;
+mod iterator;
 
 use crate::anf_polynom::AnfPolynomial;
 use crate::BooleanFunctionError::{
@@ -23,6 +24,7 @@ use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign, Not};
 use gen_combinations::CombinationIterator;
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+use crate::iterator::BooleanFunctionIterator;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BooleanFunctionType {
@@ -304,6 +306,8 @@ pub trait BooleanFunctionImpl: Debug + Any {
             })
             .count()
     }
+
+    fn iter(&self) -> BooleanFunctionIterator;
 
     fn printable_hex_truth_table(&self) -> String;
 
@@ -1253,5 +1257,34 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("288d1b41").unwrap();
         assert_eq!(boolean_function.propagation_criterion(), 3);
+    }
+
+    #[test]
+    fn test_iter() {
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        let mut iter = boolean_function.iter();
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), true);
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), false);
+        assert_eq!(iter.next().unwrap(), false);
+        assert!(iter.next().is_none());
+
+        let iter = boolean_function.iter();
+        assert_eq!(iter.count(), 8);
+
+        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let mut iter = boolean_function.iter();
+        assert_eq!(iter.next(), Some(false));
+        assert_eq!(iter.next(), Some(false));
+        assert_eq!(iter.next(), Some(false));
+        assert_eq!(iter.next(), Some(false));
+        assert_eq!(iter.next(), Some(true));
+
+        let iter = boolean_function.iter();
+        assert_eq!(iter.count(), 128);
     }
 }
