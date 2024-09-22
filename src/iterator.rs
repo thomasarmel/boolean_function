@@ -18,7 +18,7 @@ impl Iterator for BooleanFunctionIterator {
     type Item = bool;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index > self.max_index {
+        if self.current_index > self.max_index { // limit of 31 variables
             return None;
         }
         let result = self.inner_bool_func.compute_cellular_automata_rule(self.current_index);

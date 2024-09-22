@@ -25,6 +25,10 @@ impl BigBooleanFunction {
         if truth_table.bits() > (1 << variables_count) {
             panic!("{}", TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG);
         }
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if variables_count > 31 {
+            panic!("Variables count must be less or equal than 31");
+        }
         BigBooleanFunction {
             variables_count,
             truth_table,
