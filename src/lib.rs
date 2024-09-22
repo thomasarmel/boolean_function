@@ -20,7 +20,7 @@ pub use small_boolean_function::SmallBooleanFunction;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::{BitXor, BitXorAssign};
+use std::ops::{BitXor, BitXorAssign, Not};
 use gen_combinations::CombinationIterator;
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 
@@ -317,7 +317,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     fn as_mut_any(&mut self) -> &mut dyn Any;
 
-    // TODO almost bent, mul (and tt), sum, impl not, iterate on values
+    // TODO almost bent, mul (and tt), iterate on values
 }
 
 pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
@@ -405,6 +405,14 @@ impl BitXor for BooleanFunction {
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         self ^= rhs;
         self
+    }
+}
+
+impl Not for BooleanFunction {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        self.reverse()
     }
 }
 
@@ -781,8 +789,19 @@ mod tests {
             "86967e833a76c45953cd91b89e60a52f"
         );
 
+        let reversed_boolean_function = !boolean_function;
+        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(
+            reversed_boolean_function.printable_hex_truth_table(),
+            "86967e833a76c45953cd91b89e60a52f"
+        );
+
         let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
         let reversed_boolean_function = boolean_function.reverse();
+        assert_eq!(reversed_boolean_function.get_num_variables(), 4);
+        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
+
+        let reversed_boolean_function = !boolean_function;
         assert_eq!(reversed_boolean_function.get_num_variables(), 4);
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
     }

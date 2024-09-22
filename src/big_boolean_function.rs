@@ -3,7 +3,7 @@ use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanF
 use num_bigint::BigUint;
 use num_traits::{One, Zero};
 use std::any::Any;
-use std::ops::{BitXor, BitXorAssign};
+use std::ops::{BitXor, BitXorAssign, Not};
 use itertools::{enumerate, Itertools};
 use num_integer::binomial;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -260,6 +260,14 @@ impl BitXor for BigBooleanFunction {
     }
 }
 
+impl Not for BigBooleanFunction {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        self.reverse_inner()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{BigBooleanFunction, BooleanFunctionImpl};
@@ -402,6 +410,10 @@ mod tests {
             7,
         );
         let reversed_boolean_function = boolean_function.reverse_inner();
+        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "86967e833a76c45953cd91b89e60a52f");
+        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+
+        let reversed_boolean_function = !boolean_function;
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "86967e833a76c45953cd91b89e60a52f");
         assert_eq!(reversed_boolean_function.get_num_variables(), 7);
     }

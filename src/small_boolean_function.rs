@@ -5,7 +5,7 @@ use crate::BooleanFunctionError::TooBigVariableCount;
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use std::any::Any;
-use std::ops::{BitXor, BitXorAssign};
+use std::ops::{BitXor, BitXorAssign, Not};
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
@@ -280,6 +280,14 @@ impl BitXor for SmallBooleanFunction {
     }
 }
 
+impl Not for SmallBooleanFunction {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        self.reverse_inner()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{BooleanFunctionImpl, SmallBooleanFunction};
@@ -418,6 +426,11 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
         let reversed_boolean_function = boolean_function.reverse_inner();
         assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0);
+
+        let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
+        let reversed_boolean_function = !boolean_function;
+        assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0x55aa55aa);
+        assert_eq!(reversed_boolean_function.get_num_variables(), 5);
     }
 
     #[test]
