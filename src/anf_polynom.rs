@@ -1,3 +1,5 @@
+//! Algebraic Normal Form (ANF) representation of Boolean functions.
+
 use itertools::Itertools;
 use num_bigint::BigUint;
 use std::fmt::Display;
@@ -11,6 +13,9 @@ enum PolynomialFormat {
     Big(BigUint),
 }
 
+/// Polynomial representation of Boolean function in Algebraic Normal Form (ANF).
+///
+/// The ANF representation is a XOR sum of monomials, where each monomial is a AND product of variables.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AnfPolynomial {
     polynomial: PolynomialFormat,
@@ -40,6 +45,9 @@ impl AnfPolynomial {
         }
     }
 
+    /// Get the polynomial in ANF representation in unsigned 64-bit integer format. The unsigned representation of ANF is explained in README.md.
+    ///
+    /// Returns `None` if the polynomial is too big to fit in a 64-bit integer (ie more than 6 variables).
     pub fn get_polynomial_small(&self) -> Option<u64> {
         match self.polynomial {
             PolynomialFormat::Small(p) => Some(p),
@@ -47,6 +55,7 @@ impl AnfPolynomial {
         }
     }
 
+    /// Get the polynomial in ANF representation in big unsigned integer format. The unsigned representation of ANF is explained in README.md.
     pub fn get_polynomial_big(&self) -> BigUint {
         match &self.polynomial {
             PolynomialFormat::Small(p) => BigUint::from(*p),
@@ -54,6 +63,9 @@ impl AnfPolynomial {
         }
     }
 
+    /// Get the degree of the polynomial.
+    ///
+    /// The degree of the polynomial is the maximum number of variables in a monomial.
     pub fn get_degree(&self) -> usize {
         let max_input_value: u32 = (1 << self.num_variables) - 1;
         match &self.polynomial {
@@ -78,6 +90,11 @@ impl AnfPolynomial {
         }
     }
 
+    /// Returns the string representation of the polynomial.
+    ///
+    /// The monomials are ordered by the number of variables in the monomial in descending order, and then by the lexicographic order of the variables.
+    ///
+    /// Example: "x0\*x1 + x0 + x1 + x2", the '+' operator is the XOR operator, and the '\*' operator is the AND operator.
     pub fn to_string(&self) -> String {
         let mut monomials_str_list: Vec<(String, usize)> = match &self.polynomial {
             PolynomialFormat::Small(p) => (0..(1 << self.num_variables))
@@ -114,6 +131,9 @@ impl AnfPolynomial {
     }
 }
 
+/// Display implementation for `AnfPolynomial`.
+///
+/// Internally uses the [AnfPolynomial::to_string] method.
 impl Display for AnfPolynomial {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_string())

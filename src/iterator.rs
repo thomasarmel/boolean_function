@@ -1,3 +1,24 @@
+//! Iterators for Boolean functions.
+
+/// Iterator for the successive values of a Boolean function.
+///
+/// Example:
+/// ```rust
+/// use boolean_function::boolean_function_from_hex_string_truth_table;
+/// use boolean_function::BooleanFunctionIterator;
+///
+/// let boolean_function = boolean_function_from_hex_string_truth_table("1e").unwrap();
+/// let mut iterator = boolean_function.iter();
+/// assert_eq!(iterator.next(), Some(false));
+/// assert_eq!(iterator.next(), Some(true));
+/// assert_eq!(iterator.next(), Some(true));
+/// assert_eq!(iterator.next(), Some(true));
+/// assert_eq!(iterator.next(), Some(true));
+/// assert_eq!(iterator.next(), Some(false));
+/// assert_eq!(iterator.next(), Some(false));
+/// assert_eq!(iterator.next(), Some(false));
+/// assert_eq!(iterator.next(), None);
+/// ```
 pub struct BooleanFunctionIterator {
     current_index: u32,
     max_index: u32,
