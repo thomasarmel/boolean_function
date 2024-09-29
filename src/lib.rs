@@ -346,15 +346,30 @@ pub trait BooleanFunctionImpl: Debug + Any {
         })
     }
 
+    /// Returns the nonlinearity of the Boolean function.
+    ///
+    /// Nonlinearity is a measure of how far the Boolean function is from being linear.
+    /// It's defined as the Hamming distance between the Boolean function and the closest linear function, or the minimum number of output bits that must be changed to make the function linear.
+    ///
+    /// # Returns
+    /// The nonlinearity of the Boolean function, as an unsigned 32-bit integer.
     fn nonlinearity(&self) -> u32 {
         ((1 << self.get_num_variables()) - (0..=self.get_max_input_value()).map(|x| {
             self.walsh_hadamard_transform(x).unsigned_abs()
         }).max().unwrap_or(0)) >> 1
     }
 
-    /// Meaning maximally nonlinear
-    /// All derivative are balanced
-    /// Rothaus: f bent => deg(f) <= n/2
+    /// Returns `true` if the Boolean function is bent, meaning maximally nonlinear, or perfectly nonlinear.
+    ///
+    /// Only functions with an even number of variables can be bent.
+    ///
+    /// The maximum possible nonlinearity for a Boolean function with $n$ variables is $\frac{2^n - 2^{\frac{n}{2}}}{2}$.
+    ///
+    /// A bent function has all its derivative balanced.
+    ///
+    /// The Rothaus theorem states that if an $n$-variable Boolean function $f$ is bent, then $deg(f) <= \frac{n}{2}$.
+    ///
+    /// A bent function cannot be balanced.
     fn is_bent(&self) -> bool {
         if self.get_num_variables() & 1 != 0 {
             return false;
@@ -365,11 +380,31 @@ pub trait BooleanFunctionImpl: Debug + Any {
                 >> 1
     }
 
-    /// Function, degree and dimension of annihilator vector space
-    /// Special case: annihilator of zero function is one function, by convention
-    /// $ f(x).g(x) = 0 \ \ \forall x \in \mathbb{F}_2^n. $
+    /// Returns, if it exists, an annihilator function, its degree and the dimension of annihilator vector space.
+    ///
+    /// The annihilator of a Boolean function $f$ is a non-null Boolean function $g$ such that:
+    ///
+    /// $$f(x).g(x) = 0 \ \ \forall x \in \mathbb{F}_2^n$$
+    ///
+    /// **Special case**: annihilator of zero function is constant one function, by convention.
+    ///
+    /// # Parameters
+    /// - `max_degree`: The maximum degree of the annihilator to search for.
+    ///
+    /// # Returns
+    /// - `None` if no annihilator is found (this is the case for constant one function).
+    /// - `Some((annihilator, degree, dimension))` if an annihilator is found:
+    ///    - `annihilator`: The annihilator function.
+    ///    - `degree`: The degree of the returned annihilator function.
+    ///    - `dimension`: The dimension of the annihilator vector space.
     fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)>; // TODO max degree in Option
 
+    /// Returns the algebraic immunity of the Boolean function.
+    ///
+    /// The algebraic immunity of a Boolean function is defined as the minimum degree of an annihilator of the function.
+    ///
+    /// # Returns
+    /// The algebraic immunity of the Boolean function, or 0 if the function has no annihilator.
     fn algebraic_immunity(&self) -> usize {
         match self.annihilator(self.get_num_variables()) {
             None => 0,
@@ -377,11 +412,24 @@ pub trait BooleanFunctionImpl: Debug + Any {
         }
     }
 
+    /// Returns `true` if the Boolean function is plateaued.
+    ///
+    /// A Boolean function is plateaued if its Walsh-Hadamard spectrum has at most three values: 0, $\lambda$ and $-\lambda$, where $\lambda \in \mathbb{N}^*$.
     fn is_plateaued(&self) -> bool {
         let absolute_walsh_hadamard_spectrum = self.absolute_walsh_hadamard_spectrum();
         absolute_walsh_hadamard_spectrum.len() == 1 || (absolute_walsh_hadamard_spectrum.len() == 2 && absolute_walsh_hadamard_spectrum.contains_key(&0))
     }
 
+    /// Returns the sum of the square of the indicator of the Boolean function.
+    ///
+    /// The sum of the square of the indicator for a $n$-variable Boolean function $f$ is defined as:
+    ///
+    /// $$\sum_{w=0}^{2^n-1} \Delta_f(w)^2$$
+    ///
+    /// Where $\Delta_f(w)$ is the [autocorrelation transform](Self::auto_correlation_transform) of the function for a given point $w$.
+    ///
+    /// # Returns
+    /// The sum of the square of the indicator of the Boolean function.
     fn sum_of_square_indicator(&self) -> usize {
         (0..=self.get_max_input_value())
             .map(|w| self.auto_correlation_transform(w))
