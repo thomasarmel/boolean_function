@@ -1,20 +1,28 @@
+//! # Boolean Function analysis library
+
+//#![doc = include_str!("../README.md")]
+#![forbid(unsafe_code, unused_must_use)]
+#![forbid(
+    //missing_docs,
+    unreachable_pub,
+    unused_import_braces,
+    unused_extern_crates
+)]
+
 mod anf_polynom;
 mod big_boolean_function;
 mod boolean_function_error;
 mod small_boolean_function;
 mod utils;
-mod affine_equivalence_classes;
+pub mod affine_equivalence_classes;
 mod iterator;
 
-use crate::anf_polynom::AnfPolynomial;
+pub use crate::anf_polynom::AnfPolynomial;
 use crate::BooleanFunctionError::{
     StringHexParseError, UnexpectedError, WrongStringHexTruthTableLength,
 };
 pub use big_boolean_function::BigBooleanFunction;
 pub use boolean_function_error::BooleanFunctionError;
-pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_3_VAR_AFFINE_EQ_CLASSES;
-pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_4_VAR_AFFINE_EQ_CLASSES;
-pub use affine_equivalence_classes::BOOLEAN_FUNCTIONS_5_VAR_AFFINE_EQ_CLASSES;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
@@ -24,26 +32,72 @@ use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign, Not};
 use gen_combinations::CombinationIterator;
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
-use crate::iterator::BooleanFunctionIterator;
+pub use crate::iterator::BooleanFunctionIterator;
 
+/// Internal representation of Boolean function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BooleanFunctionType {
+    /// Small boolean function with 6 or fewer variables, the truth table is stored in an u64
     Small,
+    /// Big boolean function with more than 6 variables, the truth table is stored in a BigUint
     Big,
 }
 
+/// Trait for Boolean function implementations.
+/// This trait is implemented by [SmallBooleanFunction] and [BigBooleanFunction].
+///
+/// You could use this trait via the [BooleanFunction] type, which encapsulates the [BooleanFunctionImpl] trait.
 pub trait BooleanFunctionImpl: Debug + Any {
+
+    /// Variable count of the Boolean function.
     fn get_num_variables(&self) -> usize;
 
+    /// Internal type of the Boolean function abstraction:
+    ///
+    /// - [BooleanFunctionType::Big] for [BigBooleanFunction]
+    ///
+    /// - [BooleanFunctionType::Small] for [SmallBooleanFunction]
     fn get_boolean_function_type(&self) -> BooleanFunctionType;
+
+    /// Maximum input value for the Boolean function, as unsigned 32-bit integer.
+    ///
+    /// This is equal to $2^n - 1$, where $n$ is the number of variables.
     #[inline]
     fn get_max_input_value(&self) -> u32 {
         (1 << self.get_num_variables()) - 1
     }
+
+    /// Returns `true` if the Boolean function is balanced, ie it has an equal number of 0 and 1 outputs.
     fn is_balanced(&self) -> bool;
 
-    /// debug_assertions
+    /// Computes the value of the Boolean function for a given input, as a 32-bit unsigned integer.
+    ///
+    /// # Parameters
+    /// - `input_bits`: The input value for which to compute the Boolean function value, the least significant bit being the first variable.
+    ///
+    /// # Returns
+    /// The value of the Boolean function for the given input bits.
+    ///
+    /// # Panics
+    /// If the input value is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool;
+
+    /// Computes the Walsh-Hadamard transform of the Boolean function for a given direction.
+    ///
+    /// The Walsh-Hadamard transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    ///
+    /// $$W_f(\omega) = \sum_{x=0}^{2^n-1} (-1)^{f(x) \oplus \omega \cdot x}$$
+    ///
+    /// Where $\oplus$ is the XOR operation, $\cdot$ is the AND operand product, and $2^n - 1$ is the maximum input value.
+    ///
+    /// # Parameters
+    /// - `w`: The direction $\omega$ for which to compute the Walsh-Hadamard transform.
+    ///
+    /// # Returns
+    /// The value of the Walsh-Hadamard transform for the given direction.
+    ///
+    /// # Panics
+    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn walsh_hadamard_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -69,12 +123,22 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    /// Computes the Walsh-Hadamard values for all directions.
+    ///
+    /// # Returns
+    /// A vector containing the Walsh-Hadamard values for all directions.
     fn walsh_hadamard_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_hadamard_transform(w))
             .collect()
     }
 
+    /// Computes the absolute Walsh-Hadamard spectrum of the Boolean function.
+    ///
+    /// The absolute Walsh-Hadamard spectrum is the number of occurrences of each absolute value of the Walsh-Hadamard transform.
+    ///
+    /// # Returns
+    /// A hashmap containing the absolute Walsh-Hadamard values as keys, and the number of occurrences as values.
     fn absolute_walsh_hadamard_spectrum(&self) -> HashMap<u32, usize> {
         let mut absolute_walsh_value_count_map: HashMap<u32, usize> = HashMap::new();
         (0..=self.get_max_input_value()).for_each(|w| {
@@ -91,6 +155,22 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_walsh_value_count_map
     }
 
+    /// Computes the Walsh-Fourier transform of the Boolean function for a given direction.
+    ///
+    /// The Walsh-Fourier transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    ///
+    /// $$F_f(\omega) = \sum_{x=0}^{2^n-1} f(x) \cdot (-1)^{\omega \cdot x}$$
+    ///
+    /// Where $\cdot$ is the AND operand product, and $2^n - 1$ is the maximum input value.
+    ///
+    /// # Parameters
+    /// - `w`: The direction $\omega$ for which to compute the Walsh-Fourier transform.
+    ///
+    /// # Returns
+    /// The value of the Walsh-Fourier transform for the given direction.
+    ///
+    /// # Panics
+    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn walsh_fourier_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -115,12 +195,31 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    /// Computes the Walsh-Fourier values for all directions.
+    ///
+    /// # Returns
+    /// A vector containing the Walsh-Fourier values for all directions.
     fn walsh_fourier_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_fourier_transform(w))
             .collect()
     }
 
+    /// Computes the autocorrelation transform of the Boolean function for a given direction.
+    /// The autocorrelation transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    ///
+    /// $$\Delta_f(\omega) = \sum_{x=0}^{2^n-1} (-1)^{f(x) \oplus f(x \oplus \omega)}$$
+    ///
+    /// Where $\oplus$ is the XOR operation, and $2^n - 1$ is the maximum input value.
+    ///
+    /// # Parameters
+    /// - `w`: The direction $\omega$ for which to compute the autocorrelation transform.
+    ///
+    /// # Returns
+    /// The value of the autocorrelation transform for the given direction.
+    ///
+    /// # Panics
+    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn auto_correlation_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -143,6 +242,12 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    /// Computes the absolute autocorrelation spectrum of the Boolean function.
+    ///
+    /// The absolute autocorrelation spectrum is the number of occurrences of each absolute value of the autocorrelation transform.
+    ///
+    /// # Returns
+    /// A hashmap containing the absolute autocorrelation values as keys, and the number of occurrences as values.
     fn absolute_autocorrelation(&self) -> HashMap<u32, usize> {
         let mut absolute_autocorrelation_value_count_map: HashMap<u32, usize> = HashMap::new();
         (0..=self.get_max_input_value()).for_each(|w| {
@@ -161,7 +266,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_autocorrelation_value_count_map
     }
 
-    /// https://www.researchgate.net/publication/322383819_Distribution_of_the_absolute_indicator_of_random_Boolean_functions
+    /// <https://www.researchgate.net/publication/322383819_Distribution_of_the_absolute_indicator_of_random_Boolean_functions>
     /// Max autocorrelation from w=1 to max_input_value
     fn absolute_indicator(&self) -> u32 {
         (1..=self.get_max_input_value())
@@ -255,7 +360,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
         self.auto_correlation_transform(value).unsigned_abs() == 1 << self.get_num_variables()
     }
 
-    /// https://www.sciencedirect.com/topics/mathematics/linear-structure
+    /// <https://www.sciencedirect.com/topics/mathematics/linear-structure>
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
             .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.get_num_variables())
@@ -324,6 +429,11 @@ pub trait BooleanFunctionImpl: Debug + Any {
     // TODO almost bent, mul (and tt), iterate on values
 }
 
+/// This type is used to store a boolean function with any number of variables.
+///
+/// It abstracts The [SmallBooleanFunction] and [BigBooleanFunction] types, by encapsulating the [BooleanFunctionImpl] trait.
+///
+/// Please refer to the [BooleanFunctionImpl] trait for more information.
 pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
 
 impl Clone for BooleanFunction {
