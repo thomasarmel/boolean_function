@@ -82,28 +82,28 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// If the input value is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool;
 
-    /// Computes the Walsh-Hadamard transform of the Boolean function for a given direction.
+    /// Computes the Walsh-Hadamard transform of the Boolean function for a given point.
     ///
-    /// The Walsh-Hadamard transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    /// The Walsh-Hadamard transform of a Boolean function $f$, for a given point $\omega$, is defined as:
     ///
     /// $$W_f(\omega) = \sum_{x=0}^{2^n-1} (-1)^{f(x) \oplus \omega \cdot x}$$
     ///
     /// Where $\oplus$ is the XOR operation, $\cdot$ is the AND operand product, and $2^n - 1$ is the maximum input value.
     ///
     /// # Parameters
-    /// - `w`: The direction $\omega$ for which to compute the Walsh-Hadamard transform.
+    /// - `w`: The point $\omega$ for which to compute the Walsh-Hadamard transform.
     ///
     /// # Returns
-    /// The value of the Walsh-Hadamard transform for the given direction.
+    /// The value of the Walsh-Hadamard transform for the given point.
     ///
     /// # Panics
-    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    /// If the point is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn walsh_hadamard_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
-                "Too big Walsh parameter direction, must be <= {}",
+                "Too big Walsh parameter point, must be <= {}",
                 max_input_value
             );
         }
@@ -123,10 +123,10 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
-    /// Computes the Walsh-Hadamard values for all directions.
+    /// Computes the Walsh-Hadamard values for all points.
     ///
     /// # Returns
-    /// A vector containing the Walsh-Hadamard values for all directions.
+    /// A vector containing the Walsh-Hadamard values for all points.
     fn walsh_hadamard_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_hadamard_transform(w))
@@ -155,28 +155,28 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_walsh_value_count_map
     }
 
-    /// Computes the Walsh-Fourier transform of the Boolean function for a given direction.
+    /// Computes the Walsh-Fourier transform of the Boolean function for a given point.
     ///
-    /// The Walsh-Fourier transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    /// The Walsh-Fourier transform of a Boolean function $f$, for a given point $\omega$, is defined as:
     ///
     /// $$F_f(\omega) = \sum_{x=0}^{2^n-1} f(x) \cdot (-1)^{\omega \cdot x}$$
     ///
     /// Where $\cdot$ is the AND operand product, and $2^n - 1$ is the maximum input value.
     ///
     /// # Parameters
-    /// - `w`: The direction $\omega$ for which to compute the Walsh-Fourier transform.
+    /// - `w`: The point $\omega$ for which to compute the Walsh-Fourier transform.
     ///
     /// # Returns
-    /// The value of the Walsh-Fourier transform for the given direction.
+    /// The value of the Walsh-Fourier transform for the given point.
     ///
     /// # Panics
-    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    /// If the point is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn walsh_fourier_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
-                "Too big Walsh parameter direction, must be <= {}",
+                "Too big Walsh parameter point, must be <= {}",
                 max_input_value
             );
         }
@@ -195,37 +195,37 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
-    /// Computes the Walsh-Fourier values for all directions.
+    /// Computes the Walsh-Fourier values for all points.
     ///
     /// # Returns
-    /// A vector containing the Walsh-Fourier values for all directions.
+    /// A vector containing the Walsh-Fourier values for all points.
     fn walsh_fourier_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_fourier_transform(w))
             .collect()
     }
 
-    /// Computes the autocorrelation transform of the Boolean function for a given direction.
-    /// The autocorrelation transform of a Boolean function $f$, for a given direction $\omega$, is defined as:
+    /// Computes the autocorrelation transform of the Boolean function for a given point.
+    /// The autocorrelation transform of a Boolean function $f$, for a given point $\omega$, is defined as:
     ///
     /// $$\Delta_f(\omega) = \sum_{x=0}^{2^n-1} (-1)^{f(x) \oplus f(x \oplus \omega)}$$
     ///
     /// Where $\oplus$ is the XOR operation, and $2^n - 1$ is the maximum input value.
     ///
     /// # Parameters
-    /// - `w`: The direction $\omega$ for which to compute the autocorrelation transform.
+    /// - `w`: The point $\omega$ for which to compute the autocorrelation transform.
     ///
     /// # Returns
-    /// The value of the autocorrelation transform for the given direction.
+    /// The value of the autocorrelation transform for the given point.
     ///
     /// # Panics
-    /// If the direction is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    /// If the point is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
     fn auto_correlation_transform(&self, w: u32) -> i32 {
         let max_input_value = self.get_max_input_value();
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if w > max_input_value {
             panic!(
-                "Too big Walsh parameter direction, must be <= {}",
+                "Too big auto-correlation parameter point, must be <= {}",
                 max_input_value
             );
         }
@@ -266,26 +266,75 @@ pub trait BooleanFunctionImpl: Debug + Any {
         absolute_autocorrelation_value_count_map
     }
 
-    /// <https://www.researchgate.net/publication/322383819_Distribution_of_the_absolute_indicator_of_random_Boolean_functions>
-    /// Max autocorrelation from w=1 to max_input_value
+    /// Returns the absolute indicator of the Boolean function.
+    ///
+    /// As defined [here](https://www.researchgate.net/publication/322383819_Distribution_of_the_absolute_indicator_of_random_Boolean_functions),
+    /// the absolute indicator is the maximal absolute value of the auto-correlation transform for all points starting from 1 to the maximum input value $2^n - 1$,
+    /// $n$ being the number of variables.
     fn absolute_indicator(&self) -> u32 {
         (1..=self.get_max_input_value())
             .map(|w| self.auto_correlation_transform(w).unsigned_abs())
             .max().unwrap_or(0)
     }
 
+    /// Computes the derivative of the Boolean function for a given direction.
+    ///
+    /// The derivative of a Boolean function $f$ in the direction $u$ is defined as:
+    ///
+    /// $$\frac{\partial f}{\partial u} = f(x) \oplus f(x \oplus u)$$
+    ///
+    /// Where $\oplus$ is the XOR operation.
+    ///
+    /// # Parameters
+    /// - `direction`: The direction $u$ for which to compute the derivative.
+    ///
+    /// # Returns
+    /// The derivative of the Boolean function in the given direction, or an error if the direction is greater than the maximum input value and the `unsafe_disable_safety_checks` feature is not enabled.
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError>;
 
+    /// Returns `true` if the Boolean function is linear, ie its algebraic degree is 0 or 1.
     fn is_linear(&self) -> bool;
 
+    /// Reverse the Boolean function, ie swap 0 and 1 outputs.
+    ///
+    /// This is equivalent to the NOT operation, like `!boolean_function`.
+    ///
+    /// # Returns
+    /// The reversed Boolean function.
     fn reverse(&self) -> BooleanFunction;
 
+    /// Returns the Algebraic Normal Form of the Boolean function, in the form of an [AnfPolynomial].
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::boolean_function_from_u64_truth_table;
+    /// // Walfram's rule 30
+    /// let boolean_function = boolean_function_from_u64_truth_table(30, 3).unwrap();
+    /// let anf_polynomial = boolean_function.algebraic_normal_form();
+    /// // `*` denotes the AND operation, and `+` denotes the XOR operation
+    /// assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2");
+    /// ```
+    /// # Returns
+    /// The Algebraic Normal Form of the Boolean function.
     fn algebraic_normal_form(&self) -> AnfPolynomial;
 
+    /// Returns the algebraic degree of the Boolean function.
+    ///
+    /// The algebraic degree of a Boolean function is the maximum degree of the AND monomials in its Algebraic Normal Form.
+    ///
+    /// The degree of a monomial is the number of variables in the monomial.
+    ///
+    /// # Returns
+    /// The algebraic degree of the Boolean function.
     fn algebraic_degree(&self) -> usize {
         self.algebraic_normal_form().get_degree()
     }
 
+    /// Returns `true` if the Boolean function is symmetric.
+    ///
+    /// A Boolean function is symmetric if for all inputs $x$, the value of the function is the same as the value of the function for the bitwise reversed input.
+    ///
+    /// It means that the output depends only on the Hamming weight of the input.
     fn is_symmetric(&self) -> bool {
         let variables_count = self.get_num_variables() as u32;
         let precomputed_hamming_weights = (0..(variables_count + 1))

@@ -3,7 +3,7 @@
 //! $g$ and $f$ $n$-variable Boolean functions are affine equivalent if $\forall x \in \mathbb{F}_2, g(x) = f(Dx + a) + bx + c$
 //! for some D $\in \mathcal M_n(\mathbb{F}_2)$ invertible matrix, $a, b \in \mathbb{F}^n_2$ vectors and $c \in \mathbb{F}_2$
 //!
-//! All the equivalence classes representatives have been computed by Joanne Elizabeth Fuller <https://eprints.qut.edu.au/15828/1/Joanne_Fuller_Thesis.pdf>
+//! All the equivalence classes representatives have been computed by Joanne Elizabeth Fuller, in [her thesis](https://eprints.qut.edu.au/15828/1/Joanne_Fuller_Thesis.pdf).
 
 use crate::SmallBooleanFunction;
 
