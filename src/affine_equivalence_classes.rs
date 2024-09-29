@@ -1,13 +1,21 @@
-//! g and f are affine equivalent if forall x, g(x) = f(Dx + a) + bx + c for some D n*n matrix, a, b, c vectors
+//! Operations on affine equivalence classes of boolean functions
+//!
+//! $g$ and $f$ $n$-variable Boolean functions are affine equivalent if $\forall x \in \mathbb{F}_2, g(x) = f(Dx + a) + bx + c$
+//! for some D $\in \mathcal M_n(\mathbb{F}_2)$ invertible matrix, $a, b \in \mathbb{F}^n_2$ vectors and $c \in \mathbb{F}_2$
+//!
+//! All the equivalence classes representatives have been computed by Joanne Elizabeth Fuller <https://eprints.qut.edu.au/15828/1/Joanne_Fuller_Thesis.pdf>
 
 use crate::SmallBooleanFunction;
 
+/// Representatives of all affine equivalence classes of boolean functions with 3 variables
 pub const BOOLEAN_FUNCTIONS_3_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 3] = [
     SmallBooleanFunction::from_truth_table_unchecked(0xaa, 3),
     SmallBooleanFunction::from_truth_table_unchecked(0xab, 3),
     SmallBooleanFunction::from_truth_table_unchecked(0xac, 3)
 ];
 
+/// Representatives of all affine equivalence classes of boolean functions with 4 variables.
+/// The last class is the class of bent functions.
 pub const BOOLEAN_FUNCTIONS_4_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 8] = [
     SmallBooleanFunction::from_truth_table_unchecked(0xaa55, 4),
     SmallBooleanFunction::from_truth_table_unchecked(0xab55, 4),
@@ -19,6 +27,7 @@ pub const BOOLEAN_FUNCTIONS_4_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 8] =
     SmallBooleanFunction::from_truth_table_unchecked(0xac90, 4), // bent
 ];
 
+/// Representatives of all affine equivalence classes of boolean functions with 5 variables
 pub const BOOLEAN_FUNCTIONS_5_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 48] = [
     SmallBooleanFunction::from_truth_table_unchecked(0xaa55aa55, 5),
     SmallBooleanFunction::from_truth_table_unchecked(0xaa55ab55, 5),
@@ -69,3 +78,5 @@ pub const BOOLEAN_FUNCTIONS_5_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 48] 
     SmallBooleanFunction::from_truth_table_unchecked(0x68ad9b51, 5),
     SmallBooleanFunction::from_truth_table_unchecked(0x688ddb51, 5),
 ];
+
+// TODO check 2 functions are affine equivalent
