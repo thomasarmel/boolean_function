@@ -305,6 +305,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Returns the Algebraic Normal Form of the Boolean function, in the form of an [AnfPolynomial].
     ///
+    /// # Returns
+    /// The Algebraic Normal Form of the Boolean function.
+    ///
     /// # Example
     /// ```rust
     /// use boolean_function::boolean_function_from_u64_truth_table;
@@ -314,8 +317,6 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// // `*` denotes the AND operation, and `+` denotes the XOR operation
     /// assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x1 + x2");
     /// ```
-    /// # Returns
-    /// The Algebraic Normal Form of the Boolean function.
     fn algebraic_normal_form(&self) -> AnfPolynomial;
 
     /// Returns the algebraic degree of the Boolean function.
@@ -558,6 +559,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Returns an iterator over the values of the Boolean function.
     ///
+    /// # Returns
+    /// An iterator over the values of the Boolean function.
+    ///
     /// # Example
     /// ```rust
     /// use boolean_function::boolean_function_from_u64_truth_table;
@@ -567,12 +571,26 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// assert_eq!(iterator.next(), Some(false));
     /// assert_eq!(iterator.next(), Some(true));
     /// ```
-    /// # Returns
-    /// An iterator over the values of the Boolean function.
     fn iter(&self) -> BooleanFunctionIterator;
 
+    /// Returns the truth table of the Boolean function as a hexadecimal string.
+    ///
+    /// # Returns
+    /// The truth table of the Boolean function as a hexadecimal string.
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::boolean_function_from_u64_truth_table;
+    /// // Wolfram's rule 30
+    /// let boolean_function = boolean_function_from_u64_truth_table(30, 3).unwrap();
+    /// assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
+    /// ```
     fn printable_hex_truth_table(&self) -> String;
 
+    /// Returns the truth table of the Boolean function as a BigUint.
+    ///
+    /// # Returns
+    /// The truth table of the Boolean function as a BigUint.
     fn biguint_truth_table(&self) -> BigUint;
 
     /// Returns the truth table of the Boolean function as an unsigned 64-bit integer, if it fits (meaning the Boolean function has 6 or less input variables).
@@ -583,9 +601,15 @@ pub trait BooleanFunctionImpl: Debug + Any {
         self.biguint_truth_table().to_u64()
     }
 
+    /// Returns Boolean function as `dyn Any` object.
+    ///
+    /// See [core::any::Any]
     fn as_any(&self) -> &dyn Any;
 
-    fn as_mut_any(&mut self) -> &mut dyn Any;
+    /// Returns Boolean function as mutable `dyn Any` object.
+    ///
+    /// See [core::any::Any]
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 
     // TODO almost bent, mul (and tt), iterate on values
 }
@@ -645,12 +669,12 @@ impl BitXorAssign for BooleanFunction {
         }
         match (self.get_boolean_function_type(), rhs.get_boolean_function_type()) {
             (BooleanFunctionType::Small, BooleanFunctionType::Small) => {
-                let self_small_boolean_function = self.as_mut_any().downcast_mut::<SmallBooleanFunction>().unwrap();
+                let self_small_boolean_function = self.as_any_mut().downcast_mut::<SmallBooleanFunction>().unwrap();
                 let rhs_small_boolean_function = rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap();
                 *self_small_boolean_function ^= *rhs_small_boolean_function;
             },
             (BooleanFunctionType::Small, BooleanFunctionType::Big) => {
-                let self_small_boolean_function = self.as_mut_any().downcast_mut::<SmallBooleanFunction>().unwrap();
+                let self_small_boolean_function = self.as_any_mut().downcast_mut::<SmallBooleanFunction>().unwrap();
                 let rhs_small_boolean_function = SmallBooleanFunction::from_truth_table(
                     rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap().biguint_truth_table().to_u64().unwrap(),
                     self_num_variables
@@ -658,7 +682,7 @@ impl BitXorAssign for BooleanFunction {
                 *self_small_boolean_function ^= rhs_small_boolean_function;
             }
             (BooleanFunctionType::Big, BooleanFunctionType::Small) => {
-                let self_big_boolean_function = self.as_mut_any().downcast_mut::<BigBooleanFunction>().unwrap();
+                let self_big_boolean_function = self.as_any_mut().downcast_mut::<BigBooleanFunction>().unwrap();
                 let rhs_small_boolean_function = BigBooleanFunction::from_truth_table(
                     rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap().biguint_truth_table(),
                     rhs_num_variables
@@ -666,7 +690,7 @@ impl BitXorAssign for BooleanFunction {
                 *self_big_boolean_function ^= rhs_small_boolean_function;
             }
             (BooleanFunctionType::Big, BooleanFunctionType::Big) => {
-                let self_big_boolean_function = self.as_mut_any().downcast_mut::<BigBooleanFunction>().unwrap();
+                let self_big_boolean_function = self.as_any_mut().downcast_mut::<BigBooleanFunction>().unwrap();
                 let rhs_big_boolean_function = rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
                 *self_big_boolean_function ^= rhs_big_boolean_function.clone();
             }
@@ -691,6 +715,19 @@ impl Not for BooleanFunction {
     }
 }
 
+/// Creates a new BooleanFunction from a hexadecimal string representing the truth table.
+///
+/// The hexadecimal string must have a length of $\frac{2^n}{4}$ where $n$ is the number of variables of the Boolean function
+/// (meaning this function only accepts Boolean function with 2 or more input variables).
+///
+/// # Returns
+/// The Boolean function created from the hexadecimal string, or an error if the string cannot be parsed as a hexadecimal truth table of a Boolean function.
+///
+/// # Example
+/// ```rust
+/// use boolean_function::boolean_function_from_hex_string_truth_table;
+/// let boolean_function = boolean_function_from_hex_string_truth_table("7969817CC5893BA6").unwrap();
+/// ```
 pub fn boolean_function_from_hex_string_truth_table(
     hex_truth_table: &str,
 ) -> Result<BooleanFunction, BooleanFunctionError> {
