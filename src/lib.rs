@@ -308,7 +308,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Example
     /// ```rust
     /// use boolean_function::boolean_function_from_u64_truth_table;
-    /// // Walfram's rule 30
+    /// // Wolfram's rule 30
     /// let boolean_function = boolean_function_from_u64_truth_table(30, 3).unwrap();
     /// let anf_polynomial = boolean_function.algebraic_normal_form();
     /// // `*` denotes the AND operation, and `+` denotes the XOR operation
@@ -437,12 +437,30 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .sum()
     }
 
+    /// Returns `true` if the Boolean function has a linear structure.
+    ///
+    /// A $n$-variable boolean function has a linear structure if $\exists a \in \mathbb{F}_2^n$ such that
+    /// $x \longmapsto f(x) \oplus f(x \oplus a)$ is a constant function.
+    ///
+    /// <https://www.sciencedirect.com/topics/mathematics/linear-structure>
     fn has_linear_structure(&self) -> bool {
         (1..=self.get_max_input_value())
             .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.get_num_variables())
     }
 
-    /// Will panic if value > max_input_value
+    /// Checks if the parameter is a linear structure of the Boolean function.
+    ///
+    /// A vector $a \in \mathbb{F}_2^n$ is a linear structure of a $n$-variable Boolean function $f$ if the function
+    /// $x \longmapsto f(x) \oplus f(x \oplus a)$ is a constant function.
+    ///
+    /// # Parameters
+    /// - `value`: The value to check if it is a linear structure.
+    ///
+    /// # Returns
+    /// `true` if the value is a linear structure of the Boolean function, `false` otherwise.
+    ///
+    /// # Panics
+    /// The function panics if the value is greater than the function maximum input value and the `unsafe_disable_safety_checks` feature is not enabled.
     fn is_linear_structure(&self, value: u32) -> bool {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
@@ -457,14 +475,25 @@ pub trait BooleanFunctionImpl: Debug + Any {
         self.auto_correlation_transform(value).unsigned_abs() == 1 << self.get_num_variables()
     }
 
-    /// <https://www.sciencedirect.com/topics/mathematics/linear-structure>
+    /// List of all linear structures of the Boolean function.
+    ///
+    /// A vector $a \in \mathbb{F}_2^n$ is a linear structure of a $n$-variable Boolean function $f$ if the function
+    /// $x \longmapsto f(x) \oplus f(x \oplus a)$ is a constant function.
+    ///
+    /// # Returns
+    /// A vector containing all linear structures of the Boolean function.
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
             .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.get_num_variables())
             .collect()
     }
 
-    /// Xiao Massey theorem
+    /// Returns the correlation immunity order of the Boolean function (calculated using Xiao Massey theorem).
+    ///
+    /// A Boolean function is said to be correlation immune of order $k$ if the output of the function is statistically independent of any subset of maximum $k$ input bits.
+    ///
+    /// # Returns
+    /// The correlation immunity order of the Boolean function.
     fn correlation_immunity(&self) -> usize {
         (1..=self.get_max_input_value())
             .filter(|x| self.walsh_hadamard_transform(*x) != 0)
@@ -472,6 +501,12 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .min().unwrap_or(self.get_num_variables() + 1) - 1
     }
 
+    /// Returns the resiliency order of the Boolean function.
+    ///
+    /// A boolean function is said to be resilient of order $k$ if it is balanced and correlation immune of order $k$.
+    ///
+    /// # Returns
+    /// The resiliency order of the Boolean function, or `None` if the function is not balanced.
     fn resiliency_order(&self) -> Option<usize> {
         if !self.is_balanced() {
             return None;
@@ -480,13 +515,25 @@ pub trait BooleanFunctionImpl: Debug + Any {
     }
 
 
-    /// All inputs x such that f(x) = 1
+    /// Returns the support of the Boolean function.
+    ///
+    /// The support of a $n$-variable Boolean function is the set of all inputs $x \in \mathbb{F}_2^n$ such that $f(x) = 1$.
+    ///
+    /// # Returns
+    /// The support of the Boolean function, as a set of unsigned 32-bit integers.
     fn support(&self) -> HashSet<u32> {
         (0..=self.get_max_input_value())
             .filter(|x| self.compute_cellular_automata_rule(*x))
             .collect()
     }
 
+    /// Returns the maximum propagation criterion of the Boolean function.
+    ///
+    /// A $n$-variable Boolean function $f$ satisfies propagation criterion at order $k$ if its output changes with a probability
+    /// of $\frac{1}{2}$ when changing the value of any subset of $i$ variables, $\forall i \in \llbracket 1, k \rrbracket$
+    ///
+    /// # Returns
+    /// The maximum propagation criterion of the Boolean function.
     fn propagation_criterion(&self) -> usize {
         let num_variables = self.get_num_variables();
         let max_input_value = self.get_max_input_value();
@@ -509,12 +556,29 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .count()
     }
 
+    /// Returns an iterator over the values of the Boolean function.
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::boolean_function_from_u64_truth_table;
+    /// // Wolfram's rule 30
+    /// let boolean_function = boolean_function_from_u64_truth_table(30, 3).unwrap();
+    /// let mut iterator = boolean_function.iter();
+    /// assert_eq!(iterator.next(), Some(false));
+    /// assert_eq!(iterator.next(), Some(true));
+    /// ```
+    /// # Returns
+    /// An iterator over the values of the Boolean function.
     fn iter(&self) -> BooleanFunctionIterator;
 
     fn printable_hex_truth_table(&self) -> String;
 
     fn biguint_truth_table(&self) -> BigUint;
 
+    /// Returns the truth table of the Boolean function as an unsigned 64-bit integer, if it fits (meaning the Boolean function has 6 or less input variables).
+    ///
+    /// # Returns
+    /// The truth table of the Boolean function as an unsigned 64-bit integer, or `None` if the truth table is too big to fit in an u64.
     fn try_u64_truth_table(&self) -> Option<u64> {
         self.biguint_truth_table().to_u64()
     }
