@@ -64,6 +64,8 @@ As you can see, this library provides 3 types of Boolean functions:
 
 All these types have the methods of the `BooleanFunctionImpl` trait, which provides methods to analyze and manipulate Boolean functions.
 
+See [examples](examples/) directory for more examples.
+
 ### Limitations
 
 - Some constructor methods, like `boolean_function_from_hex_string_truth_table`, don't work for Boolean functions with 0 or 1 input variables (because there cannot be expressed as hex string). As these functions are trivial, it should not be a problem.
