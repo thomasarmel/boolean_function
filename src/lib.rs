@@ -1,6 +1,6 @@
 //! # Boolean Function analysis library
 
-//#![doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code, unused_must_use)]
 #![forbid(
     missing_docs,
@@ -50,7 +50,7 @@ pub enum BooleanFunctionType {
 pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Variable count of the Boolean function.
-    fn get_num_variables(&self) -> usize;
+    fn variables_count(&self) -> usize;
 
     /// Internal type of the Boolean function abstraction:
     ///
@@ -64,7 +64,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// This is equal to $2^n - 1$, where $n$ is the number of variables.
     #[inline]
     fn get_max_input_value(&self) -> u32 {
-        (1 << self.get_num_variables()) - 1
+        (1 << self.variables_count()) - 1
     }
 
     /// Returns `true` if the Boolean function is balanced, ie it has an equal number of 0 and 1 outputs.
@@ -339,7 +339,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     ///
     /// It means that the output depends only on the Hamming weight of the input.
     fn is_symmetric(&self) -> bool {
-        let variables_count = self.get_num_variables() as u32;
+        let variables_count = self.variables_count() as u32;
         let precomputed_hamming_weights = (0..(variables_count + 1))
             .map(|i| self.compute_cellular_automata_rule(u32::MAX.checked_shr(32 - i).unwrap_or(0)))
             .collect::<Vec<bool>>();
@@ -357,7 +357,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Returns
     /// The nonlinearity of the Boolean function, as an unsigned 32-bit integer.
     fn nonlinearity(&self) -> u32 {
-        ((1 << self.get_num_variables()) - (0..=self.get_max_input_value()).map(|x| {
+        ((1 << self.variables_count()) - (0..=self.get_max_input_value()).map(|x| {
             self.walsh_hadamard_transform(x).unsigned_abs()
         }).max().unwrap_or(0)) >> 1
     }
@@ -374,12 +374,12 @@ pub trait BooleanFunctionImpl: Debug + Any {
     ///
     /// A bent function cannot be balanced.
     fn is_bent(&self) -> bool {
-        if self.get_num_variables() & 1 != 0 {
+        if self.variables_count() & 1 != 0 {
             return false;
         }
         self.nonlinearity()
-            == ((1 << self.get_num_variables())
-                - (1 << (self.get_num_variables() >> 1)))
+            == ((1 << self.variables_count())
+                - (1 << (self.variables_count() >> 1)))
                 >> 1
     }
 
@@ -409,7 +409,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Returns
     /// The algebraic immunity of the Boolean function, or 0 if the function has no annihilator.
     fn algebraic_immunity(&self) -> usize {
-        match self.annihilator(self.get_num_variables()) {
+        match self.annihilator(self.variables_count()) {
             None => 0,
             Some(annihilator) => annihilator.1
         }
@@ -448,7 +448,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// <https://www.sciencedirect.com/topics/mathematics/linear-structure>
     fn has_linear_structure(&self) -> bool {
         (1..=self.get_max_input_value())
-            .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.get_num_variables())
+            .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.variables_count())
     }
 
     /// Checks if the parameter is a linear structure of the Boolean function.
@@ -475,7 +475,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
                 );
             }
         }
-        self.auto_correlation_transform(value).unsigned_abs() == 1 << self.get_num_variables()
+        self.auto_correlation_transform(value).unsigned_abs() == 1 << self.variables_count()
     }
 
     /// List of all linear structures of the Boolean function.
@@ -487,7 +487,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// A vector containing all linear structures of the Boolean function.
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
-            .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.get_num_variables())
+            .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.variables_count())
             .collect()
     }
 
@@ -504,7 +504,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
         (1..=self.get_max_input_value())
             .filter(|x| self.walsh_hadamard_transform(*x) != 0)
             .map(|x| x.count_ones() as usize)
-            .min().unwrap_or(self.get_num_variables() + 1) - 1
+            .min().unwrap_or(self.variables_count() + 1) - 1
     }
 
     /// Returns the resiliency order of the Boolean function.
@@ -541,7 +541,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Returns
     /// The maximum propagation criterion of the Boolean function.
     fn propagation_criterion(&self) -> usize {
-        let num_variables = self.get_num_variables();
+        let num_variables = self.variables_count();
         let max_input_value = self.get_max_input_value();
         let possible_reversable_bit_position = (0..num_variables).into_iter().collect::<Vec<usize>>();
         (1..=num_variables).into_iter()
@@ -677,8 +677,8 @@ impl Eq for BooleanFunction {}
 /// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXorAssign for BooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
-        let self_num_variables = self.get_num_variables();
-        let rhs_num_variables = rhs.get_num_variables();
+        let self_num_variables = self.variables_count();
+        let rhs_num_variables = rhs.variables_count();
         if self_num_variables != rhs_num_variables {
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
@@ -751,7 +751,7 @@ impl Not for BooleanFunction {
 /// # Example
 /// ```rust
 /// use boolean_function::boolean_function_from_hex_string_truth_table;
-/// let boolean_function = boolean_function_from_hex_string_truth_table("7969817CC5893BA6").unwrap();
+/// let boolean_function = boolean_function_from_hex_string_truth_table("0969817CC5893BA6").unwrap();
 /// ```
 pub fn boolean_function_from_hex_string_truth_table(
     hex_truth_table: &str,
@@ -884,23 +884,23 @@ mod tests {
         assert!(boolean_function.is_err());
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
-        assert_eq!(boolean_function.get_num_variables(), 4);
+        assert_eq!(boolean_function.variables_count(), 4);
 
         let boolean_function =
             super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
     }
 
     #[test]
-    fn test_get_num_variables() {
+    fn test_variables_count() {
         let boolean_function =
             super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
-        assert_eq!(boolean_function.get_num_variables(), 4);
+        assert_eq!(boolean_function.variables_count(), 4);
     }
 
     #[test]
@@ -1062,14 +1062,14 @@ mod tests {
         let boolean_function =
             super::boolean_function_from_hex_string_truth_table("aa55aa55").unwrap();
         let derivative = boolean_function.derivative(1).unwrap();
-        assert_eq!(derivative.get_num_variables(), 5);
+        assert_eq!(derivative.variables_count(), 5);
         assert_eq!(derivative.printable_hex_truth_table(), "ffffffff");
 
         let boolean_function =
             super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
         let derivative = boolean_function.derivative(1).unwrap();
-        assert_eq!(derivative.get_num_variables(), 7);
+        assert_eq!(derivative.variables_count(), 7);
         assert_eq!(
             derivative.printable_hex_truth_table(),
             "cfffc3c00fcf0cfff003f3ccf3f0ff30"
@@ -1189,14 +1189,14 @@ mod tests {
             super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
         let reversed_boolean_function = boolean_function.reverse();
-        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(reversed_boolean_function.variables_count(), 7);
         assert_eq!(
             reversed_boolean_function.printable_hex_truth_table(),
             "86967e833a76c45953cd91b89e60a52f"
         );
 
         let reversed_boolean_function = !boolean_function;
-        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(reversed_boolean_function.variables_count(), 7);
         assert_eq!(
             reversed_boolean_function.printable_hex_truth_table(),
             "86967e833a76c45953cd91b89e60a52f"
@@ -1204,11 +1204,11 @@ mod tests {
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
         let reversed_boolean_function = boolean_function.reverse();
-        assert_eq!(reversed_boolean_function.get_num_variables(), 4);
+        assert_eq!(reversed_boolean_function.variables_count(), 4);
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
 
         let reversed_boolean_function = !boolean_function;
-        assert_eq!(reversed_boolean_function.get_num_variables(), 4);
+        assert_eq!(reversed_boolean_function.variables_count(), 4);
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
     }
 
@@ -1554,7 +1554,7 @@ mod tests {
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
         assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Big);
 
@@ -1564,7 +1564,7 @@ mod tests {
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
         assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Small);
 
@@ -1574,7 +1574,7 @@ mod tests {
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
         assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Big);
         assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Small);
@@ -1585,7 +1585,7 @@ mod tests {
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
         assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Small);
         assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Big);
@@ -1634,7 +1634,7 @@ mod tests {
         let boolean_function2 = super::boolean_function_from_reverse_walsh_fourier_transform(&walsh_fourier_values).unwrap();
         assert_eq!(boolean_function2.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Big);
-        assert_eq!(boolean_function2.get_num_variables(), 9);
+        assert_eq!(boolean_function2.variables_count(), 9);
     }
 
     #[test]
@@ -1694,7 +1694,7 @@ mod tests {
     fn test_boolean_function_from_u64_truth_table() {
         let boolean_function = super::boolean_function_from_u64_truth_table(30, 3).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
 
         let boolean_function = super::boolean_function_from_u64_truth_table(30, 7);
@@ -1708,12 +1708,12 @@ mod tests {
     fn test_boolean_function_from_biguint_truth_table() {
         let boolean_function = super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 3).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
 
         let boolean_function = super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 7).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "0000000000000000000000000000001e");
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
         assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
 
         let boolean_function = super::boolean_function_from_u64_truth_table(300, 3);

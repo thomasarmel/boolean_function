@@ -214,7 +214,7 @@ impl BigBooleanFunction {
 }
 impl BooleanFunctionImpl for BigBooleanFunction {
     #[inline]
-    fn get_num_variables(&self) -> usize {
+    fn variables_count(&self) -> usize {
         self.variables_count
     }
 
@@ -343,12 +343,12 @@ mod tests {
     use num_traits::{Num, One, Zero};
 
     #[test]
-    fn test_get_num_variables() {
+    fn test_variables_count() {
         let boolean_function = BigBooleanFunction::from_truth_table(
             BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
             7,
         );
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod tests {
             7,
         );
         let derivative = boolean_function.derivative(1).unwrap();
-        assert_eq!(derivative.get_num_variables(), 7);
+        assert_eq!(derivative.variables_count(), 7);
         assert_eq!(
             derivative.printable_hex_truth_table(),
             "cfffc3c00fcf0cfff003f3ccf3f0ff30"
@@ -479,11 +479,11 @@ mod tests {
         );
         let reversed_boolean_function = boolean_function.reverse_inner();
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "86967e833a76c45953cd91b89e60a52f");
-        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(reversed_boolean_function.variables_count(), 7);
 
         let reversed_boolean_function = !boolean_function;
         assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "86967e833a76c45953cd91b89e60a52f");
-        assert_eq!(reversed_boolean_function.get_num_variables(), 7);
+        assert_eq!(reversed_boolean_function.variables_count(), 7);
     }
 
     #[test]
@@ -654,9 +654,9 @@ mod tests {
         let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
         boolean_function ^= boolean_function2;
         assert_eq!(boolean_function.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
-        assert_eq!(boolean_function.get_num_variables(), 7);
+        assert_eq!(boolean_function.variables_count(), 7);
         assert_eq!(boolean_function3.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
-        assert_eq!(boolean_function3.get_num_variables(), 7);
+        assert_eq!(boolean_function3.variables_count(), 7);
     }
 
     #[test]
@@ -681,7 +681,7 @@ mod tests {
 
         let boolean_function = BigBooleanFunction::from_walsh_fourier_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffffffffffff");
-        assert_eq!(boolean_function.get_num_variables(), 6);
+        assert_eq!(boolean_function.variables_count(), 6);
     }
 
     #[test]

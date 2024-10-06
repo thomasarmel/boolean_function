@@ -241,7 +241,7 @@ impl SmallBooleanFunction {
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
     #[inline]
-    fn get_num_variables(&self) -> usize {
+    fn variables_count(&self) -> usize {
         self.variables_count
     }
 
@@ -377,9 +377,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_num_variables() {
+    fn test_variables_count() {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
-        assert_eq!(boolean_function.get_num_variables(), 5);
+        assert_eq!(boolean_function.variables_count(), 5);
     }
 
     #[test]
@@ -411,7 +411,7 @@ mod tests {
     fn test_derivative() {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
         let derivative = boolean_function.derivative_inner(1).unwrap();
-        assert_eq!(derivative.get_num_variables(), 5);
+        assert_eq!(derivative.variables_count(), 5);
         assert_eq!(derivative.get_truth_table_u64(), 0xffffffff);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaaddbb55, 5).unwrap();
@@ -487,12 +487,12 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
         let reversed_boolean_function = boolean_function.reverse_inner();
         assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0x55aa55aa);
-        assert_eq!(reversed_boolean_function.get_num_variables(), 5);
+        assert_eq!(reversed_boolean_function.variables_count(), 5);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 6).unwrap();
         let reversed_boolean_function = boolean_function.reverse_inner();
         assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0xffffffff55aa55aa);
-        assert_eq!(reversed_boolean_function.get_num_variables(), 6);
+        assert_eq!(reversed_boolean_function.variables_count(), 6);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0, 6).unwrap();
         let reversed_boolean_function = boolean_function.reverse_inner();
@@ -505,7 +505,7 @@ mod tests {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
         let reversed_boolean_function = !boolean_function;
         assert_eq!(reversed_boolean_function.get_truth_table_u64(), 0x55aa55aa);
-        assert_eq!(reversed_boolean_function.get_num_variables(), 5);
+        assert_eq!(reversed_boolean_function.variables_count(), 5);
     }
 
     #[test]
@@ -602,23 +602,23 @@ mod tests {
     fn test_from_walsh_hadamard_values() {
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[-2, 2, 2, 2]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0xe);
-        assert_eq!(boolean_function.get_num_variables(), 2);
+        assert_eq!(boolean_function.variables_count(), 2);
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[-8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0xff);
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0x00);
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[0, 0, 0, 0, -4, 4, 4, 4]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0x1e);
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[0, 0, 0, 0, 4, -4, -4, -4]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0xe1);
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[0, 0, 0, 0, 4, -4, -4]);
         assert!(boolean_function.is_err());
@@ -636,9 +636,9 @@ mod tests {
         let boolean_function3 = boolean_function ^ boolean_function2;
         boolean_function ^= boolean_function2;
         assert_eq!(boolean_function.get_truth_table_u64(), 0xb5);
-        assert_eq!(boolean_function.get_num_variables(), 3);
+        assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function3.get_truth_table_u64(), 0xb5);
-        assert_eq!(boolean_function3.get_num_variables(), 3);
+        assert_eq!(boolean_function3.variables_count(), 3);
     }
 
     #[test]
@@ -663,7 +663,7 @@ mod tests {
 
         let boolean_function = SmallBooleanFunction::from_walsh_fourier_values(&[64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
         assert_eq!(boolean_function.get_truth_table_u64(), 0xffffffffffffffff);
-        assert_eq!(boolean_function.get_num_variables(), 6);
+        assert_eq!(boolean_function.variables_count(), 6);
     }
 
     #[test]

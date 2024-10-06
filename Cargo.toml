@@ -18,6 +18,9 @@ itertools = "0.13.0"
 fast-boolean-anf-transform = "0.0.2"
 gen-combinations = "0.1.0"
 
+[dev-dependencies]
+rayon = "1.10.0"
+
 [features]
 unsafe_disable_safety_checks = []
 
