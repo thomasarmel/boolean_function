@@ -14,6 +14,11 @@ use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::iterator::BooleanFunctionIterator;
 use crate::utils::left_kernel_boolean;
 
+/// Struct representing a boolean function with a big truth table.
+///
+/// The struct internally stores the truth table as an u64, meaning that the maximum number of variables is 6.
+///
+/// For more than 6 variables, use the [crate::BigBooleanFunction] struct, or the [crate::BooleanFunction] type to store both small and big boolean functions.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SmallBooleanFunction {
     variables_count: usize,
@@ -21,7 +26,17 @@ pub struct SmallBooleanFunction {
 }
 
 impl SmallBooleanFunction {
-    /// Length must be < 6
+
+    /// Creates a new [SmallBooleanFunction] from a truth table and the number of variables.
+    ///
+    /// # Parameters
+    /// - `truth_table` - The truth table of the Boolean function, where the lower bit represents the output of the Boolean function for the input 0.
+    /// - `variables_count` - The number of variables of the Boolean function.
+    ///
+    /// # Returns
+    /// A [SmallBooleanFunction] instance from the truth table and the number of variables or an error if:
+    /// - The number of variables is greater than 6.
+    /// - The truth table is too big for the number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
     pub fn from_truth_table(
         truth_table: u64,
         variables_count: usize,
@@ -46,10 +61,18 @@ impl SmallBooleanFunction {
         }
     }
 
+    /// Returns the truth table of the Boolean function, as an [u64].
     pub fn get_truth_table_u64(&self) -> u64 {
         self.truth_table
     }
 
+    /// Computes the [derivative](crate::BooleanFunctionImpl::derivative) of the Boolean function for a given direction.
+    ///
+    /// # Parameters
+    /// * `direction` - The direction of the derivative.
+    ///
+    /// # Returns
+    /// The derivative of the Boolean function for the given direction, or an error if the direction is greater than the maximum input value and the `unsafe_disable_safety_checks` feature is not enabled.
     pub fn derivative_inner(&self, direction: u32) -> Result<Self, BooleanFunctionError> {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
@@ -74,6 +97,10 @@ impl SmallBooleanFunction {
         })
     }
 
+    /// Computes the [reverse](crate::BooleanFunctionImpl::reverse) of the Boolean function.
+    ///
+    /// # Returns
+    /// The reverse of the Boolean function.
     pub fn reverse_inner(&self) -> Self {
         Self {
             variables_count: self.variables_count,
@@ -81,6 +108,13 @@ impl SmallBooleanFunction {
         }
     }
 
+    /// Computes the [annihilator](crate::BooleanFunctionImpl::annihilator) of the Boolean function for a given maximum degree.
+    ///
+    /// # Parameters
+    /// * `max_degree` - The maximum degree of the wished annihilator.
+    ///
+    /// # Returns
+    /// A tuple containing the annihilator function, its degree and the dimension of the annihilator vector space, or `None` no annihilator was found.
     pub fn annihilator_inner(&self, max_degree: usize) -> Option<(SmallBooleanFunction, usize, usize)> {
         if self.truth_table == 0 {
             let max_possible_function_tt = u64::MAX >> (64 - (1 << self.variables_count));
@@ -136,13 +170,25 @@ impl SmallBooleanFunction {
         Some((annihilator_function, annihilator_degree, left_kernel.len()))
     }
 
-    /// Reverse walsh transform
+    /// Computes a [SmallBooleanFunction] from [Walsh-Hadamard values](crate::BooleanFunctionImpl::walsh_hadamard_values), by applying the inverse Walsh-Hadamard transform.
+    ///
+    /// # Parameters
+    /// * `walsh_values` - The Walsh-Hadamard values of the Boolean function.
+    ///
+    /// # Returns
+    /// The Boolean function created from the Walsh-Hadamard values list, or an error if:
+    /// - the list length is less than 4
+    /// - the list length is not a power of 2.
+    /// - the number of variables is greater than 6 (meaning that the list length is greater than 64).
     pub fn from_walsh_hadamard_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
         if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
             return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
         }
         let num_variables = walsh_values_count.trailing_zeros() as usize;
+        if num_variables > 6 {
+            return Err(TooBigVariableCount(6));
+        }
         let mut truth_table = 0u64;
         for i in 0..(1 << num_variables) {
             let value = walsh_values.iter().enumerate()
@@ -158,12 +204,25 @@ impl SmallBooleanFunction {
         })
     }
 
+    /// Computes a [SmallBooleanFunction] from [Walsh-Fourier values](crate::BooleanFunctionImpl::walsh_fourier_values), by applying the inverse Walsh-Fourier transform.
+    ///
+    /// # Parameters
+    /// * `walsh_values` - The Walsh-Hadamard values of the Boolean function.
+    ///
+    /// # Returns
+    /// The Boolean function created from the Walsh-Hadamard values list, or an error if:
+    /// - the list length is less than 4
+    /// - the list length is not a power of 2.
+    /// - the number of variables is greater than 6 (meaning that the list length is greater than 64).
     pub fn from_walsh_fourier_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
         if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
             return Err(BooleanFunctionError::InvalidWalshValuesCount(walsh_values_count));
         }
         let num_variables = walsh_values_count.trailing_zeros() as usize;
+        if num_variables > 6 {
+            return Err(TooBigVariableCount(6));
+        }
         let mut truth_table = 0u64;
         for i in 0..(1 << num_variables) {
             let value = walsh_values.iter().enumerate()
@@ -266,6 +325,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
     }
 }
 
+/// In-place XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXorAssign for SmallBooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -276,6 +339,10 @@ impl BitXorAssign for SmallBooleanFunction {
     }
 }
 
+/// XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXor for SmallBooleanFunction {
     type Output = Self;
 
@@ -285,6 +352,9 @@ impl BitXor for SmallBooleanFunction {
     }
 }
 
+/// NOT operator for Boolean functions.
+///
+/// This is equivalent to the [crate::BooleanFunctionImpl::reverse] operation: it reverses each output of the Boolean function.
 impl Not for SmallBooleanFunction {
     type Output = Self;
 

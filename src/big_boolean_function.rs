@@ -13,6 +13,11 @@ use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::iterator::BooleanFunctionIterator;
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 
+/// Struct representing a boolean function with a big truth table.
+///
+/// As the [crate::SmallBooleanFunction] struct internally uses a [u64] to store the truth table, this struct allows to store Boolean functions with more than 6 variables.
+///
+/// For a variable count less or equal to 6, the [crate::SmallBooleanFunction] struct is more efficient. You could use the [crate::BooleanFunction] to store both types of Boolean functions.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BigBooleanFunction {
     variables_count: usize,
@@ -20,6 +25,18 @@ pub struct BigBooleanFunction {
 }
 
 impl BigBooleanFunction {
+
+    /// Creates a new [BigBooleanFunction] from a truth table and the number of variables.
+    ///
+    /// # Parameters
+    /// - `truth_table` - The truth table of the Boolean function, where the lower bit represents the output of the Boolean function for the input 0.
+    /// - `variables_count` - The number of variables of the Boolean function.
+    ///
+    /// # Returns
+    /// A [BigBooleanFunction] instance from the truth table and the number of variables.
+    ///
+    /// # Panics
+    /// Panics if the truth table is too big for the number of variables or if the number of variables is greater than 31, and the `unsafe_disable_safety_checks` feature is not enabled.
     pub fn from_truth_table(truth_table: BigUint, variables_count: usize) -> Self {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if truth_table.bits() > (1 << variables_count) {
@@ -35,6 +52,13 @@ impl BigBooleanFunction {
         }
     }
 
+    /// Computes the [derivative](crate::BooleanFunctionImpl::derivative) of the Boolean function for a given direction.
+    ///
+    /// # Parameters
+    /// * `direction` - The direction of the derivative.
+    ///
+    /// # Returns
+    /// The derivative of the Boolean function for the given direction, or an error if the direction is greater than the maximum input value and the `unsafe_disable_safety_checks` feature is not enabled.
     pub fn derivative_inner(&self, direction: u32) -> Result<Self, BooleanFunctionError> {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         {
@@ -59,6 +83,10 @@ impl BigBooleanFunction {
         })
     }
 
+    /// Computes the [reverse](crate::BooleanFunctionImpl::reverse) of the Boolean function.
+    ///
+    /// # Returns
+    /// The reverse of the Boolean function.
     pub fn reverse_inner(&self) -> Self {
         BigBooleanFunction {
             variables_count: self.variables_count,
@@ -66,6 +94,13 @@ impl BigBooleanFunction {
         }
     }
 
+    /// Computes the [annihilator](crate::BooleanFunctionImpl::annihilator) of the Boolean function for a given maximum degree.
+    ///
+    /// # Parameters
+    /// * `max_degree` - The maximum degree of the wished annihilator.
+    ///
+    /// # Returns
+    /// A tuple containing the annihilator function, its degree and the dimension of the annihilator vector space, or `None` no annihilator was found.
     pub fn annihilator_inner(&self, max_degree: usize) -> Option<(BigBooleanFunction, usize, usize)> {
         if self.truth_table == BigUint::zero() {
             let max_possible_function_tt = (BigUint::one() << (1 << self.variables_count)) - BigUint::one();
@@ -121,7 +156,13 @@ impl BigBooleanFunction {
         Some((annihilator_function, annihilator_degree, left_kernel.len()))
     }
 
-    /// Reverse walsh transform
+    /// Computes a [BigBooleanFunction] from [Walsh-Hadamard values](crate::BooleanFunctionImpl::walsh_hadamard_values), by applying the inverse Walsh-Hadamard transform.
+    ///
+    /// # Parameters
+    /// * `walsh_values` - The Walsh-Hadamard values of the Boolean function.
+    ///
+    /// # Returns
+    /// The Boolean function created from the Walsh-Hadamard values list, or an error if the list length is less than 4, or not a power of 2.
     pub fn from_walsh_hadamard_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
         if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
@@ -143,6 +184,13 @@ impl BigBooleanFunction {
         })
     }
 
+    /// Computes a [BigBooleanFunction] from [Walsh-Fourier values](crate::BooleanFunctionImpl::walsh_fourier_values), by applying the inverse Walsh-Fourier transform.
+    ///
+    /// # Parameters
+    /// * `walsh_values` - The Walsh-Fourier values of the Boolean function.
+    ///
+    /// # Returns
+    /// The Boolean function created from the Walsh-Fourier values list, or an error if the list length is less than 4, or not a power of 2.
     pub fn from_walsh_fourier_values(walsh_values: &[i32]) -> Result<Self, BooleanFunctionError> {
         let walsh_values_count = walsh_values.len();
         if walsh_values_count < 4 || walsh_values_count.count_ones() != 1 {
@@ -250,6 +298,10 @@ impl BooleanFunctionImpl for BigBooleanFunction {
     }
 }
 
+/// In-place XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXorAssign for BigBooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
@@ -260,6 +312,10 @@ impl BitXorAssign for BigBooleanFunction {
     }
 }
 
+/// XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXor for BigBooleanFunction {
     type Output = Self;
 
@@ -269,6 +325,9 @@ impl BitXor for BigBooleanFunction {
     }
 }
 
+/// NOT operator for Boolean functions.
+///
+/// This is equivalent to the [crate::BooleanFunctionImpl::reverse] operation: it reverses each output of the Boolean function.
 impl Not for BigBooleanFunction {
     type Output = Self;
 

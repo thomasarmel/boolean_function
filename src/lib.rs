@@ -3,7 +3,7 @@
 //#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code, unused_must_use)]
 #![forbid(
-    //missing_docs,
+    missing_docs,
     unreachable_pub,
     unused_import_braces,
     unused_extern_crates
@@ -305,6 +305,8 @@ pub trait BooleanFunctionImpl: Debug + Any {
 
     /// Returns the Algebraic Normal Form of the Boolean function, in the form of an [AnfPolynomial].
     ///
+    /// We use the Bakoev's algorithm to compute the ANF polynomial <http://www.math.bas.bg/moiuser/OCRT2017/a3.pdf>.
+    ///
     /// # Returns
     /// The Algebraic Normal Form of the Boolean function.
     ///
@@ -493,6 +495,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
     ///
     /// A Boolean function is said to be correlation immune of order $k$ if the output of the function is statistically independent of any subset of maximum $k$ input bits.
     ///
+    /// As shown by Siegenthaler, a $n$-variable Boolean function  which is correlation immune of order $k$ has a degree $d \leq n - m$.
+    /// <https://iacr.org/archive/asiacrypt2002/25010483/25010483.pdf>
+    ///
     /// # Returns
     /// The correlation immunity order of the Boolean function.
     fn correlation_immunity(&self) -> usize {
@@ -630,6 +635,9 @@ impl Clone for BooleanFunction {
     }
 }
 
+/// Equality operator for Boolean functions.
+///
+/// Two Boolean functions are equal if they have the same truth table and the same number of variables.
 impl PartialEq for BooleanFunction {
     fn eq(&self, other: &Self) -> bool {
         if self.get_boolean_function_type() != other.get_boolean_function_type() {
@@ -658,8 +666,15 @@ impl PartialEq for BooleanFunction {
     }
 }
 
+/// Equality operator for Boolean functions.
+///
+/// Two Boolean functions are equal if they have the same truth table and the same number of variables.
 impl Eq for BooleanFunction {}
 
+/// In-place XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXorAssign for BooleanFunction {
     fn bitxor_assign(&mut self, rhs: Self) {
         let self_num_variables = self.get_num_variables();
@@ -698,6 +713,10 @@ impl BitXorAssign for BooleanFunction {
     }
 }
 
+/// XOR operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
 impl BitXor for BooleanFunction {
     type Output = Self;
 
@@ -707,6 +726,9 @@ impl BitXor for BooleanFunction {
     }
 }
 
+/// NOT operator for Boolean functions.
+///
+/// This is equivalent to the [BooleanFunctionImpl::reverse] operation: it reverses each output of the Boolean function.
 impl Not for BooleanFunction {
     type Output = Self;
 
@@ -719,6 +741,9 @@ impl Not for BooleanFunction {
 ///
 /// The hexadecimal string must have a length of $\frac{2^n}{4}$ where $n$ is the number of variables of the Boolean function
 /// (meaning this function only accepts Boolean function with 2 or more input variables).
+///
+/// # Parameters
+/// - `hex_truth_table`: The hexadecimal string representing the truth table of the Boolean function.
 ///
 /// # Returns
 /// The Boolean function created from the hexadecimal string, or an error if the string cannot be parsed as a hexadecimal truth table of a Boolean function.
@@ -751,6 +776,17 @@ pub fn boolean_function_from_hex_string_truth_table(
     }
 }
 
+/// Creates a new BooleanFunction from a list of integers representing the [Walsh-Hadamard transform](BooleanFunctionImpl::walsh_hadamard_values), by applying a reverse Walsh-Hadamard transform.
+///
+/// The Walsh-Hadamard values list for an $n$-variable Boolean function must have a length of $2^n$.
+/// The function returns a [SmallBooleanFunction] if the given Walsh-Hadamard values list has a length of 64 or less, and a [BigBooleanFunction] otherwise.
+/// It won't check that the values are consistent, if not the function will return the closest Boolean function possible.
+///
+/// # Parameters
+/// - `walsh_hadamard_values`: The list of integers representing the Walsh-Hadamard transform of the Boolean function.
+///
+/// # Returns
+/// The Boolean function created from the Walsh-Hadamard values list, or an error if the list length is less than 4, or not a power of 2.
 pub fn boolean_function_from_reverse_walsh_hadamard_transform(walsh_hadamard_values: &[i32]) -> Result<BooleanFunction, BooleanFunctionError> {
     const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
     if walsh_hadamard_values.len() > MAX_WALSH_VALUES_SMALL {
@@ -759,18 +795,57 @@ pub fn boolean_function_from_reverse_walsh_hadamard_transform(walsh_hadamard_val
     Ok(Box::new(SmallBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?))
 }
 
-pub fn boolean_function_from_reverse_walsh_fourier_transform(walsh_hadamard_values: &[i32]) -> Result<BooleanFunction, BooleanFunctionError> {
+/// Creates a new BooleanFunction from a list of integers representing the [Walsh-Fourier transform](BooleanFunctionImpl::walsh_fourier_values), by applying a reverse Walsh-Fourier transform.
+///
+/// The Walsh-Fourier values list for an $n$-variable Boolean function must have a length of $2^n$.
+/// The function returns a [SmallBooleanFunction] if the given Walsh-Fourier values list has a length of 64 or less, and a [BigBooleanFunction] otherwise.
+/// It won't check that the values are consistent, if not the function will return the closest Boolean function possible.
+///
+/// # Parameters
+/// - `walsh_fourier_values`: The list of integers representing the Walsh-Fourier transform of the Boolean function.
+///
+/// # Returns
+/// The Boolean function created from the Walsh-Fourier values list, or an error if the list length is less than 4, or not a power of 2.
+pub fn boolean_function_from_reverse_walsh_fourier_transform(walsh_fourier_values: &[i32]) -> Result<BooleanFunction, BooleanFunctionError> {
     const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
-    if walsh_hadamard_values.len() > MAX_WALSH_VALUES_SMALL {
-        return Ok(Box::new(BigBooleanFunction::from_walsh_fourier_values(walsh_hadamard_values)?)); // Error is handled in BigBooleanFunction constructor
+    if walsh_fourier_values.len() > MAX_WALSH_VALUES_SMALL {
+        return Ok(Box::new(BigBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?)); // Error is handled in BigBooleanFunction constructor
     }
-    Ok(Box::new(SmallBooleanFunction::from_walsh_fourier_values(walsh_hadamard_values)?))
+    Ok(Box::new(SmallBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?))
 }
 
+/// Creates a new BooleanFunction from an u64 representing the truth table (meaning the Boolean function has 6 or less input variables).
+///
+/// The wrapped Boolean function is a [SmallBooleanFunction].
+///
+/// # Parameters
+/// - `truth_table`: The u64 truth table of the Boolean function, where the lower bit represents the output of the Boolean function for the input 0.
+/// - `num_variables`: The number of input variables of the Boolean function.
+///
+/// # Returns
+/// The Boolean function created from the u64 truth table.
+///
+/// Returns an error if:
+/// - The given input variables count is greater than 6.
+/// - The given truth table is too big for the given input variables count and the `unsafe_disable_safety_checks` feature is not enabled.
 pub fn boolean_function_from_u64_truth_table(truth_table: u64, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
     Ok(Box::new(SmallBooleanFunction::from_truth_table(truth_table, num_variables)?))
 }
 
+/// Creates a new BooleanFunction from a BigUint representing the truth table.
+///
+/// The wrapped Boolean function is a [BigBooleanFunction] if the variables count is greater than 6, and a [SmallBooleanFunction] otherwise.
+///
+/// # Parameters
+/// - `truth_table`: The BigUint truth table of the Boolean function, where the lower bit represents the output of the Boolean function for the input 0.
+/// - `num_variables`: The number of input variables of the Boolean function.
+///
+/// # Returns
+/// The Boolean function created from the BigUint truth table.
+///
+/// Returns an error if:
+/// - The given input variables count is greater than 31, and the `unsafe_disable_safety_checks` feature is not enabled.
+/// - The given truth table is too big for the given input variables count and the `unsafe_disable_safety_checks` feature is not enabled.
 pub fn boolean_function_from_biguint_truth_table(truth_table: &BigUint, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
     #[cfg(not(feature = "unsafe_disable_safety_checks"))]
     if truth_table.bits() > (1 << num_variables) {
