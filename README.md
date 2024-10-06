@@ -1,6 +1,6 @@
 # Boolean function analysis library
 
-*Mathematical analysis of boolean functions.*
+*Mathematical analysis of Boolean functions.*
 
 ---
 
