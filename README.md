@@ -136,7 +136,7 @@ pub fn boolean_function_balanced(truth_table: u64, variables_count: usize) -> bo
     truth_table.count_ones() == expected_set_number
 }
 ```
-Let's compile using rustc 1.81.0 and O3 optimization level.
+Let's compile using rustc 1.81.0 for x86_64 target and O3 optimization level.
 
 Without native target:
 

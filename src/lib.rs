@@ -281,7 +281,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     ///
     /// The derivative of a Boolean function $f$ in the direction $u$ is defined as:
     ///
-    /// $$\frac{\partial f}{\partial u} = f(x) \oplus f(x \oplus u)$$
+    /// $$\nabla_u f(x) = f(x) \oplus f(x \oplus u)$$
     ///
     /// Where $\oplus$ is the XOR operation.
     ///
