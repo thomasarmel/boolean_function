@@ -9,30 +9,30 @@
     unused_extern_crates
 )]
 
+pub mod affine_equivalence_classes;
 mod anf_polynom;
 mod big_boolean_function;
 mod boolean_function_error;
+mod iterator;
 mod small_boolean_function;
 mod utils;
-pub mod affine_equivalence_classes;
-mod iterator;
 
 pub use crate::anf_polynom::AnfPolynomial;
+use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+pub use crate::iterator::BooleanFunctionIterator;
 use crate::BooleanFunctionError::{
     StringHexParseError, UnexpectedError, WrongStringHexTruthTableLength,
 };
 pub use big_boolean_function::BigBooleanFunction;
 pub use boolean_function_error::BooleanFunctionError;
+use gen_combinations::CombinationIterator;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::{BitXor, BitXorAssign, Not};
-use gen_combinations::CombinationIterator;
-use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
-pub use crate::iterator::BooleanFunctionIterator;
+use std::ops::{BitXor, BitXorAssign, Deref, DerefMut, Not};
 
 /// Internal representation of Boolean function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,7 +48,6 @@ pub enum BooleanFunctionType {
 ///
 /// You could use this trait via the [BooleanFunction] type, which encapsulates the [BooleanFunctionImpl] trait.
 pub trait BooleanFunctionImpl: Debug + Any {
-
     /// Variable count of the Boolean function.
     fn variables_count(&self) -> usize;
 
@@ -274,7 +273,8 @@ pub trait BooleanFunctionImpl: Debug + Any {
     fn absolute_indicator(&self) -> u32 {
         (1..=self.get_max_input_value())
             .map(|w| self.auto_correlation_transform(w).unsigned_abs())
-            .max().unwrap_or(0)
+            .max()
+            .unwrap_or(0)
     }
 
     /// Computes the derivative of the Boolean function for a given direction.
@@ -345,7 +345,8 @@ pub trait BooleanFunctionImpl: Debug + Any {
             .collect::<Vec<bool>>();
 
         (0u32..(1 << variables_count)).all(|i| {
-            precomputed_hamming_weights[i.count_ones() as usize] == self.compute_cellular_automata_rule(i)
+            precomputed_hamming_weights[i.count_ones() as usize]
+                == self.compute_cellular_automata_rule(i)
         })
     }
 
@@ -357,9 +358,12 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Returns
     /// The nonlinearity of the Boolean function, as an unsigned 32-bit integer.
     fn nonlinearity(&self) -> u32 {
-        ((1 << self.variables_count()) - (0..=self.get_max_input_value()).map(|x| {
-            self.walsh_hadamard_transform(x).unsigned_abs()
-        }).max().unwrap_or(0)) >> 1
+        ((1 << self.variables_count())
+            - (0..=self.get_max_input_value())
+                .map(|x| self.walsh_hadamard_transform(x).unsigned_abs())
+                .max()
+                .unwrap_or(0))
+            >> 1
     }
 
     /// Returns `true` if the Boolean function is bent, meaning maximally nonlinear, or perfectly nonlinear.
@@ -378,9 +382,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
             return false;
         }
         self.nonlinearity()
-            == ((1 << self.variables_count())
-                - (1 << (self.variables_count() >> 1)))
-                >> 1
+            == ((1 << self.variables_count()) - (1 << (self.variables_count() >> 1))) >> 1
     }
 
     /// Returns, if it exists, an annihilator function, its degree and the dimension of annihilator vector space.
@@ -411,7 +413,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     fn algebraic_immunity(&self) -> usize {
         match self.annihilator(self.variables_count()) {
             None => 0,
-            Some(annihilator) => annihilator.1
+            Some(annihilator) => annihilator.1,
         }
     }
 
@@ -420,7 +422,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// A Boolean function is plateaued if its Walsh-Hadamard spectrum has at most three values: 0, $\lambda$ and $-\lambda$, where $\lambda \in \mathbb{N}^*$.
     fn is_plateaued(&self) -> bool {
         let absolute_walsh_hadamard_spectrum = self.absolute_walsh_hadamard_spectrum();
-        absolute_walsh_hadamard_spectrum.len() == 1 || (absolute_walsh_hadamard_spectrum.len() == 2 && absolute_walsh_hadamard_spectrum.contains_key(&0))
+        absolute_walsh_hadamard_spectrum.len() == 1
+            || (absolute_walsh_hadamard_spectrum.len() == 2
+                && absolute_walsh_hadamard_spectrum.contains_key(&0))
     }
 
     /// Returns the sum of the square of the indicator of the Boolean function.
@@ -447,8 +451,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
     ///
     /// <https://www.sciencedirect.com/topics/mathematics/linear-structure>
     fn has_linear_structure(&self) -> bool {
-        (1..=self.get_max_input_value())
-            .any(|x| self.auto_correlation_transform(x).unsigned_abs() == 1 << self.variables_count())
+        (1..=self.get_max_input_value()).any(|x| {
+            self.auto_correlation_transform(x).unsigned_abs() == 1 << self.variables_count()
+        })
     }
 
     /// Checks if the parameter is a linear structure of the Boolean function.
@@ -469,10 +474,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
         {
             let max_input_value = self.get_max_input_value();
             if value > max_input_value {
-                panic!(
-                    "Too big value parameter, must be <= {}",
-                    max_input_value
-                );
+                panic!("Too big value parameter, must be <= {}", max_input_value);
             }
         }
         self.auto_correlation_transform(value).unsigned_abs() == 1 << self.variables_count()
@@ -487,7 +489,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// A vector containing all linear structures of the Boolean function.
     fn linear_structures(&self) -> Vec<u32> {
         (0..=self.get_max_input_value())
-            .filter(|x| self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.variables_count())
+            .filter(|x| {
+                self.auto_correlation_transform(*x).unsigned_abs() == 1 << self.variables_count()
+            })
             .collect()
     }
 
@@ -504,7 +508,9 @@ pub trait BooleanFunctionImpl: Debug + Any {
         (1..=self.get_max_input_value())
             .filter(|x| self.walsh_hadamard_transform(*x) != 0)
             .map(|x| x.count_ones() as usize)
-            .min().unwrap_or(self.variables_count() + 1) - 1
+            .min()
+            .unwrap_or(self.variables_count() + 1)
+            - 1
     }
 
     /// Returns the resiliency order of the Boolean function.
@@ -519,7 +525,6 @@ pub trait BooleanFunctionImpl: Debug + Any {
         }
         Some(self.correlation_immunity())
     }
-
 
     /// Returns the support of the Boolean function.
     ///
@@ -543,21 +548,28 @@ pub trait BooleanFunctionImpl: Debug + Any {
     fn propagation_criterion(&self) -> usize {
         let num_variables = self.variables_count();
         let max_input_value = self.get_max_input_value();
-        let possible_reversable_bit_position = (0..num_variables).into_iter().collect::<Vec<usize>>();
-        (1..=num_variables).into_iter()
+        let possible_reversable_bit_position =
+            (0..num_variables).into_iter().collect::<Vec<usize>>();
+        (1..=num_variables)
+            .into_iter()
             .take_while(|criterion_degree| {
-                CombinationIterator::new(&possible_reversable_bit_position, *criterion_degree)
-                    .all(|combination| {
+                CombinationIterator::new(&possible_reversable_bit_position, *criterion_degree).all(
+                    |combination| {
                         let mut bit_mask = 0;
                         for &bit_position in combination {
                             bit_mask |= (1 << bit_position) as u32;
                         }
-                        let function_equal_mask_count = (0..=max_input_value).into_iter().filter(|&x| {
-                            let x_prime = x ^ bit_mask;
-                            self.compute_cellular_automata_rule(x) == self.compute_cellular_automata_rule(x_prime)
-                        }).count();
+                        let function_equal_mask_count = (0..=max_input_value)
+                            .into_iter()
+                            .filter(|&x| {
+                                let x_prime = x ^ bit_mask;
+                                self.compute_cellular_automata_rule(x)
+                                    == self.compute_cellular_automata_rule(x_prime)
+                            })
+                            .count();
                         function_equal_mask_count == (1 << (num_variables - 1))
-                    })
+                    },
+                )
             })
             .count()
     }
@@ -624,13 +636,45 @@ pub trait BooleanFunctionImpl: Debug + Any {
 /// It abstracts The [SmallBooleanFunction] and [BigBooleanFunction] types, by encapsulating the [BooleanFunctionImpl] trait.
 ///
 /// Please refer to the [BooleanFunctionImpl] trait for more information.
-pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
+//pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
+#[derive(Debug)]
+pub struct BooleanFunction(Box<dyn BooleanFunctionImpl + Send + Sync>);
+
+impl Deref for BooleanFunction {
+    type Target = dyn BooleanFunctionImpl + Send + Sync;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl DerefMut for BooleanFunction {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
+    }
+}
+
+impl<T: BooleanFunctionImpl + Send + Sync + 'static> From<T> for BooleanFunction {
+    fn from(boolean_function: T) -> Self {
+        BooleanFunction(Box::new(boolean_function))
+    }
+}
 
 impl Clone for BooleanFunction {
     fn clone(&self) -> Self {
         match self.get_boolean_function_type() {
-            BooleanFunctionType::Small => Box::new(self.as_any().downcast_ref::<SmallBooleanFunction>().unwrap().clone()),
-            BooleanFunctionType::Big => Box::new(self.as_any().downcast_ref::<BigBooleanFunction>().unwrap().clone()),
+            BooleanFunctionType::Small => (
+                self.as_any()
+                    .downcast_ref::<SmallBooleanFunction>()
+                    .unwrap()
+                    .clone()
+            ).into(),
+            BooleanFunctionType::Big => (
+                self.as_any()
+                    .downcast_ref::<BigBooleanFunction>()
+                    .unwrap()
+                    .clone()
+            ).into(),
         }
     }
 }
@@ -682,31 +726,57 @@ impl BitXorAssign for BooleanFunction {
         if self_num_variables != rhs_num_variables {
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
-        match (self.get_boolean_function_type(), rhs.get_boolean_function_type()) {
+        match (
+            self.get_boolean_function_type(),
+            rhs.get_boolean_function_type(),
+        ) {
             (BooleanFunctionType::Small, BooleanFunctionType::Small) => {
-                let self_small_boolean_function = self.as_any_mut().downcast_mut::<SmallBooleanFunction>().unwrap();
-                let rhs_small_boolean_function = rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap();
+                let self_small_boolean_function = self
+                    .as_any_mut()
+                    .downcast_mut::<SmallBooleanFunction>()
+                    .unwrap();
+                let rhs_small_boolean_function =
+                    rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap();
                 *self_small_boolean_function ^= *rhs_small_boolean_function;
-            },
+            }
             (BooleanFunctionType::Small, BooleanFunctionType::Big) => {
-                let self_small_boolean_function = self.as_any_mut().downcast_mut::<SmallBooleanFunction>().unwrap();
+                let self_small_boolean_function = self
+                    .as_any_mut()
+                    .downcast_mut::<SmallBooleanFunction>()
+                    .unwrap();
                 let rhs_small_boolean_function = SmallBooleanFunction::from_truth_table(
-                    rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap().biguint_truth_table().to_u64().unwrap(),
-                    self_num_variables
-                ).unwrap();
+                    rhs.as_any()
+                        .downcast_ref::<BigBooleanFunction>()
+                        .unwrap()
+                        .biguint_truth_table()
+                        .to_u64()
+                        .unwrap(),
+                    self_num_variables,
+                )
+                .unwrap();
                 *self_small_boolean_function ^= rhs_small_boolean_function;
             }
             (BooleanFunctionType::Big, BooleanFunctionType::Small) => {
-                let self_big_boolean_function = self.as_any_mut().downcast_mut::<BigBooleanFunction>().unwrap();
+                let self_big_boolean_function = self
+                    .as_any_mut()
+                    .downcast_mut::<BigBooleanFunction>()
+                    .unwrap();
                 let rhs_small_boolean_function = BigBooleanFunction::from_truth_table(
-                    rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap().biguint_truth_table(),
-                    rhs_num_variables
+                    rhs.as_any()
+                        .downcast_ref::<SmallBooleanFunction>()
+                        .unwrap()
+                        .biguint_truth_table(),
+                    rhs_num_variables,
                 );
                 *self_big_boolean_function ^= rhs_small_boolean_function;
             }
             (BooleanFunctionType::Big, BooleanFunctionType::Big) => {
-                let self_big_boolean_function = self.as_any_mut().downcast_mut::<BigBooleanFunction>().unwrap();
-                let rhs_big_boolean_function = rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
+                let self_big_boolean_function = self
+                    .as_any_mut()
+                    .downcast_mut::<BigBooleanFunction>()
+                    .unwrap();
+                let rhs_big_boolean_function =
+                    rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
                 *self_big_boolean_function ^= rhs_big_boolean_function.clone();
             }
         }
@@ -761,18 +831,18 @@ pub fn boolean_function_from_hex_string_truth_table(
     }
     let num_variables = (hex_truth_table.len() << 2).trailing_zeros() as usize;
     if num_variables <= 6 {
-        Ok(Box::new(
-            SmallBooleanFunction::from_truth_table(
-                u64::from_str_radix(hex_truth_table, 16).map_err(|_| StringHexParseError)?,
-                num_variables,
-            )
-            .map_err(|_| UnexpectedError)?,
-        ))
+        Ok(SmallBooleanFunction::from_truth_table(
+            u64::from_str_radix(hex_truth_table, 16).map_err(|_| StringHexParseError)?,
+            num_variables,
+        )
+        .map_err(|_| UnexpectedError)?
+        .into())
     } else {
-        Ok(Box::new(BigBooleanFunction::from_truth_table(
+        Ok(BigBooleanFunction::from_truth_table(
             BigUint::from_str_radix(hex_truth_table, 16).map_err(|_| StringHexParseError)?,
             num_variables,
-        )))
+        )
+        .into())
     }
 }
 
@@ -787,12 +857,15 @@ pub fn boolean_function_from_hex_string_truth_table(
 ///
 /// # Returns
 /// The Boolean function created from the Walsh-Hadamard values list, or an error if the list length is less than 4, or not a power of 2.
-pub fn boolean_function_from_reverse_walsh_hadamard_transform(walsh_hadamard_values: &[i32]) -> Result<BooleanFunction, BooleanFunctionError> {
+pub fn boolean_function_from_reverse_walsh_hadamard_transform(
+    walsh_hadamard_values: &[i32],
+) -> Result<BooleanFunction, BooleanFunctionError> {
     const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
     if walsh_hadamard_values.len() > MAX_WALSH_VALUES_SMALL {
-        return Ok(Box::new(BigBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?)); // Error is handled in BigBooleanFunction constructor
+        return Ok((BigBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?).into());
+        // Error is handled in BigBooleanFunction constructor
     }
-    Ok(Box::new(SmallBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?))
+    Ok((SmallBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?).into())
 }
 
 /// Creates a new BooleanFunction from a list of integers representing the [Walsh-Fourier transform](BooleanFunctionImpl::walsh_fourier_values), by applying a reverse Walsh-Fourier transform.
@@ -806,12 +879,15 @@ pub fn boolean_function_from_reverse_walsh_hadamard_transform(walsh_hadamard_val
 ///
 /// # Returns
 /// The Boolean function created from the Walsh-Fourier values list, or an error if the list length is less than 4, or not a power of 2.
-pub fn boolean_function_from_reverse_walsh_fourier_transform(walsh_fourier_values: &[i32]) -> Result<BooleanFunction, BooleanFunctionError> {
+pub fn boolean_function_from_reverse_walsh_fourier_transform(
+    walsh_fourier_values: &[i32],
+) -> Result<BooleanFunction, BooleanFunctionError> {
     const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
     if walsh_fourier_values.len() > MAX_WALSH_VALUES_SMALL {
-        return Ok(Box::new(BigBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?)); // Error is handled in BigBooleanFunction constructor
+        return Ok((BigBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?).into());
+        // Error is handled in BigBooleanFunction constructor
     }
-    Ok(Box::new(SmallBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?))
+    Ok((SmallBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?).into())
 }
 
 /// Creates a new BooleanFunction from an u64 representing the truth table (meaning the Boolean function has 6 or less input variables).
@@ -828,8 +904,11 @@ pub fn boolean_function_from_reverse_walsh_fourier_transform(walsh_fourier_value
 /// Returns an error if:
 /// - The given input variables count is greater than 6.
 /// - The given truth table is too big for the given input variables count and the `unsafe_disable_safety_checks` feature is not enabled.
-pub fn boolean_function_from_u64_truth_table(truth_table: u64, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
-    Ok(Box::new(SmallBooleanFunction::from_truth_table(truth_table, num_variables)?))
+pub fn boolean_function_from_u64_truth_table(
+    truth_table: u64,
+    num_variables: usize,
+) -> Result<BooleanFunction, BooleanFunctionError> {
+    Ok((SmallBooleanFunction::from_truth_table(truth_table, num_variables)?).into())
 }
 
 /// Creates a new BooleanFunction from a BigUint representing the truth table.
@@ -846,7 +925,10 @@ pub fn boolean_function_from_u64_truth_table(truth_table: u64, num_variables: us
 /// Returns an error if:
 /// - The given input variables count is greater than 31, and the `unsafe_disable_safety_checks` feature is not enabled.
 /// - The given truth table is too big for the given input variables count and the `unsafe_disable_safety_checks` feature is not enabled.
-pub fn boolean_function_from_biguint_truth_table(truth_table: &BigUint, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
+pub fn boolean_function_from_biguint_truth_table(
+    truth_table: &BigUint,
+    num_variables: usize,
+) -> Result<BooleanFunction, BooleanFunctionError> {
     #[cfg(not(feature = "unsafe_disable_safety_checks"))]
     if truth_table.bits() > (1 << num_variables) {
         return Err(BooleanFunctionError::TooBigTruthTableForVarCount);
@@ -856,20 +938,24 @@ pub fn boolean_function_from_biguint_truth_table(truth_table: &BigUint, num_vari
         return Err(BooleanFunctionError::TooBigVariableCount(31));
     }
     if num_variables <= 6 {
-        return Ok(Box::new(SmallBooleanFunction::from_truth_table(truth_table.to_u64().unwrap(), num_variables)?));
+        return Ok((SmallBooleanFunction::from_truth_table(
+            truth_table.to_u64().unwrap(),
+            num_variables,
+        )?)
+        .into());
     }
-    Ok(Box::new(BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables)))
+    Ok((BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables)).into())
 }
 
 // TODO from polynomial etc.
 
 #[cfg(test)]
 mod tests {
+    use crate::BooleanFunctionError::InvalidWalshValuesCount;
     use crate::{BooleanFunction, BooleanFunctionType};
-    use std::collections::HashMap;
     use num_bigint::BigUint;
     use num_traits::Num;
-    use crate::BooleanFunctionError::InvalidWalshValuesCount;
+    use std::collections::HashMap;
 
     #[test]
     fn test_boolean_function_from_hex_string_truth_table() {
@@ -1078,14 +1164,21 @@ mod tests {
 
     #[test]
     fn test_algebraic_normal_form() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1*x2*x3 + x0*x1*x2*x4 + x0*x1*x3*x4 + x1*x2*x3*x4 + x0*x1*x2*x5 + x0*x2*x3*x5 + x1*x2*x3*x5 + x0*x2*x4*x5 + x1*x2*x4*x5 + x1*x3*x4*x5 + x2*x3*x4*x5 + x0*x1*x2*x6 + x0*x1*x3*x6 + x0*x2*x3*x6 + x1*x2*x3*x6 + x0*x2*x4*x6 + x1*x2*x4*x6 + x0*x3*x4*x6 + x2*x3*x4*x6 + x0*x1*x5*x6 + x0*x2*x5*x6 + x1*x2*x5*x6 + x1*x3*x5*x6 + x2*x3*x5*x6 + x3*x4*x5*x6 + x0*x1*x2 + x0*x2*x3 + x1*x2*x4 + x1*x3*x4 + x2*x3*x4 + x0*x1*x5 + x0*x2*x5 + x1*x2*x5 + x1*x3*x5 + x2*x3*x5 + x0*x4*x5 + x2*x4*x5 + x3*x4*x5 + x0*x2*x6 + x1*x2*x6 + x3*x4*x6 + x0*x5*x6 + x2*x5*x6 + x3*x5*x6 + x0*x2 + x0*x3 + x2*x4 + x3*x5 + x0*x6 + x1*x6 + x2*x6 + x3*x6 + x5*x6 + x2 + x4 + x5");
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD1").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD1")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1*x2*x3*x4*x5*x6 + x0*x1*x2*x3*x4*x5 + x0*x1*x2*x3*x4*x6 + x0*x1*x2*x3*x5*x6 + x0*x1*x2*x4*x5*x6 + x0*x1*x3*x4*x5*x6 + x0*x2*x3*x4*x5*x6 + x1*x2*x3*x4*x5*x6 + x0*x1*x2*x3*x4 + x0*x1*x2*x3*x5 + x0*x1*x2*x4*x5 + x0*x1*x3*x4*x5 + x0*x2*x3*x4*x5 + x1*x2*x3*x4*x5 + x0*x1*x2*x3*x6 + x0*x1*x2*x4*x6 + x0*x1*x3*x4*x6 + x0*x2*x3*x4*x6 + x1*x2*x3*x4*x6 + x0*x1*x2*x5*x6 + x0*x1*x3*x5*x6 + x0*x2*x3*x5*x6 + x1*x2*x3*x5*x6 + x0*x1*x4*x5*x6 + x0*x2*x4*x5*x6 + x1*x2*x4*x5*x6 + x0*x3*x4*x5*x6 + x1*x3*x4*x5*x6 + x2*x3*x4*x5*x6 + x0*x2*x3*x4 + x0*x1*x3*x5 + x0*x1*x4*x5 + x0*x3*x4*x5 + x0*x1*x4*x6 + x1*x3*x4*x6 + x0*x3*x5*x6 + x0*x4*x5*x6 + x1*x4*x5*x6 + x2*x4*x5*x6 + x0*x1*x3 + x1*x2*x3 + x0*x1*x4 + x0*x2*x4 + x0*x3*x4 + x0*x3*x5 + x1*x4*x5 + x0*x1*x6 + x0*x3*x6 + x1*x3*x6 + x2*x3*x6 + x0*x4*x6 + x1*x4*x6 + x2*x4*x6 + x1*x5*x6 + x4*x5*x6 + x0*x1 + x1*x2 + x1*x3 + x2*x3 + x0*x4 + x1*x4 + x3*x4 + x0*x5 + x1*x5 + x2*x5 + x4*x5 + x4*x6 + x0 + x1 + x3 + x6 + 1");
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
-        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1 + x0 + x1 + x2");
+        assert_eq!(
+            boolean_function.algebraic_normal_form().to_string(),
+            "x0*x1 + x0 + x1 + x2"
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("00").unwrap();
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "0");
@@ -1094,24 +1187,38 @@ mod tests {
         assert_eq!(boolean_function.algebraic_normal_form().to_string(), "1");
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("6e").unwrap();
-        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1*x2 + x0*x1 + x0 + x1");
+        assert_eq!(
+            boolean_function.algebraic_normal_form().to_string(),
+            "x0*x1*x2 + x0*x1 + x0 + x1"
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("7b").unwrap();
-        assert_eq!(boolean_function.algebraic_normal_form().to_string(), "x0*x1 + x1*x2 + x1 + 1");
+        assert_eq!(
+            boolean_function.algebraic_normal_form().to_string(),
+            "x0*x1 + x1*x2 + x1 + 1"
+        );
     }
 
     #[test]
     fn test_algebraic_degree() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_degree(), 4);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD1").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD1")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_degree(), 7);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_degree(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_degree(), 0);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
@@ -1205,11 +1312,17 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("fe12").unwrap();
         let reversed_boolean_function = boolean_function.reverse();
         assert_eq!(reversed_boolean_function.variables_count(), 4);
-        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
+        assert_eq!(
+            reversed_boolean_function.printable_hex_truth_table(),
+            "01ed"
+        );
 
         let reversed_boolean_function = !boolean_function;
         assert_eq!(reversed_boolean_function.variables_count(), 4);
-        assert_eq!(reversed_boolean_function.printable_hex_truth_table(), "01ed");
+        assert_eq!(
+            reversed_boolean_function.printable_hex_truth_table(),
+            "01ed"
+        );
     }
 
     #[test]
@@ -1225,13 +1338,11 @@ mod tests {
         assert!(boolean_function.is_linear());
 
         let boolean_function =
-            super::boolean_function_from_hex_string_truth_table("abcdef0123456789")
-                .unwrap();
+            super::boolean_function_from_hex_string_truth_table("abcdef0123456789").unwrap();
         assert!(!boolean_function.is_linear());
 
         let boolean_function =
-            super::boolean_function_from_hex_string_truth_table("00000000ffffffff")
-                .unwrap();
+            super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
         assert!(boolean_function.is_linear());
     }
 
@@ -1249,79 +1360,115 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert!(!boolean_function.is_symmetric());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000008").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000008").unwrap();
         assert!(!boolean_function.is_symmetric());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffff")
+                .unwrap();
         assert!(boolean_function.is_symmetric());
     }
 
     #[test]
     fn test_nonlinearity() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
         assert_eq!(boolean_function.nonlinearity(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
         assert_eq!(boolean_function.nonlinearity(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000a").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0000000a").unwrap();
         assert_eq!(boolean_function.nonlinearity(), 2);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert_eq!(boolean_function.nonlinearity(), 28);
     }
 
     #[test]
     fn test_is_bent() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
         assert!(!boolean_function.is_bent());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert!(boolean_function.is_bent());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
         assert!(!boolean_function.is_bent());
     }
 
     #[test]
     fn test_annihilator() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
         let annihilator = boolean_function.annihilator(0).unwrap();
         assert_eq!(annihilator.0.printable_hex_truth_table(), "ffffffff");
         assert_eq!(annihilator.1, 0);
         assert_eq!(annihilator.2, 1);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef0123456789").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef0123456789").unwrap();
         let annihilator = boolean_function.annihilator(4).unwrap();
-        assert_eq!(annihilator.0.printable_hex_truth_table(), "1010101010101010");
+        assert_eq!(
+            annihilator.0.printable_hex_truth_table(),
+            "1010101010101010"
+        );
         assert_eq!(annihilator.1, 3);
         assert_eq!(annihilator.2, 25);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        )
+        .unwrap();
         let annihilator = boolean_function.annihilator(4);
         assert!(annihilator.is_none());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
         let annihilator = boolean_function.annihilator(4).unwrap();
-        assert_eq!(annihilator.0.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        assert_eq!(
+            annihilator.0.printable_hex_truth_table(),
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        );
         assert_eq!(annihilator.1, 0);
         assert_eq!(annihilator.2, 163);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c44224422441188118822442244118811880400810a80e200425").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "80921c010276c44224422441188118822442244118811880400810a80e200425",
+        )
+        .unwrap();
         let annihilator = boolean_function.annihilator(1);
         assert!(annihilator.is_none());
         let annihilator = boolean_function.annihilator(5).unwrap();
-        assert_eq!(annihilator.0.printable_hex_truth_table(), "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188");
+        assert_eq!(
+            annihilator.0.printable_hex_truth_table(),
+            "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188"
+        );
         assert_eq!(annihilator.1, 2);
         assert_eq!(annihilator.2, 155);
     }
 
     #[test]
     fn test_algebraic_immunity() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        )
+        .unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 0);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
@@ -1330,16 +1477,25 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c44224422441188118822442244118811880400810a80e200425").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "80921c010276c44224422441188118822442244118811880400810a80e200425",
+        )
+        .unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 2);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188",
+        )
+        .unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 2);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 3);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert_eq!(boolean_function.algebraic_immunity(), 2);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
@@ -1348,7 +1504,10 @@ mod tests {
 
     #[test]
     fn test_is_plateaued() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        )
+        .unwrap();
         assert!(boolean_function.is_plateaued());
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("8778").unwrap();
@@ -1357,22 +1516,28 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert!(boolean_function.is_plateaued());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef1234567890").unwrap();
         assert!(!boolean_function.is_plateaued());
     }
 
     #[test]
     fn test_sum_of_square_indicator() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
         assert_eq!(boolean_function.sum_of_square_indicator(), 32768);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
         assert_eq!(boolean_function.sum_of_square_indicator(), 4096);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890")
+                .unwrap();
         assert_eq!(boolean_function.sum_of_square_indicator(), 84992);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.sum_of_square_indicator(), 32768);
     }
 
@@ -1381,19 +1546,26 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 8);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 32);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 16);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890")
+                .unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 128);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 32);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.absolute_indicator(), 32);
     }
 
@@ -1402,20 +1574,45 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         assert_eq!(boolean_function.linear_structures(), [0, 4]);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("abcdef1234567890abcdef1234567890")
+                .unwrap();
         assert_eq!(boolean_function.linear_structures(), [0, 64]);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert_eq!(boolean_function.linear_structures(), [0]);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
-        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]);
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000ffffffff").unwrap();
+        assert_eq!(
+            boolean_function.linear_structures(),
+            [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+                44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63
+            ]
+        );
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
-        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        assert_eq!(
+            boolean_function.linear_structures(),
+            [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31
+            ]
+        );
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
-        assert_eq!(boolean_function.linear_structures(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        assert_eq!(
+            boolean_function.linear_structures(),
+            [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31
+            ]
+        );
     }
 
     #[test]
@@ -1426,13 +1623,16 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
         assert!(!boolean_function.has_linear_structure());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000").unwrap();
         assert!(boolean_function.has_linear_structure());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("ffffffff").unwrap();
         assert!(boolean_function.has_linear_structure());
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("0113077C165E76A8").unwrap();
         assert!(!boolean_function.has_linear_structure());
     }
 
@@ -1447,41 +1647,117 @@ mod tests {
     #[test]
     fn test_walsh_hadamard_values() {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
-        assert_eq!(boolean_function.walsh_hadamard_values(), [-2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2]);
+        assert_eq!(
+            boolean_function.walsh_hadamard_values(),
+            [-2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0000").unwrap();
-        assert_eq!(boolean_function.walsh_hadamard_values(), [16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_hadamard_values(),
+            [16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
-        assert_eq!(boolean_function.walsh_hadamard_values(), [-16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_hadamard_values(),
+            [-16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
     }
 
     #[test]
     fn test_boolean_function_from_reverse_walsh_transform() {
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[-2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2]).unwrap();
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            -2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2,
+        ])
+        .unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "dd0e");
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
-        assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffff00000000");
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ])
+        .unwrap();
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "ffffffff00000000"
+        );
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
-        assert_eq!(boolean_function.printable_hex_truth_table(), "ffffffffffffffff0000000000000000");
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
+        .unwrap();
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "ffffffffffffffff0000000000000000"
+        );
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ])
+        .unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "0000");
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8, 8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8, 8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16, 0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0, 0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8, -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12, -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12, -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4, -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60, -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84, -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12, -4, -12, -12, -20, -20, 4, 4, -4]).unwrap();
-        assert_eq!(boolean_function.printable_hex_truth_table(), "80921c010276c44224422441188118822442244118811880400810a80e200425");
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8,
+            8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8,
+            8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16,
+            0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0,
+            0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8,
+            -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12,
+            -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12,
+            -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4,
+            -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60,
+            -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84,
+            -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12,
+            -4, -12, -12, -20, -20, 4, 4, -4,
+        ])
+        .unwrap();
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "80921c010276c44224422441188118822442244118811880400810a80e200425"
+        );
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8, 8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8, 8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16, 0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0, 0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8, -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12, -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12, -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4, -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60, -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84, -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12, -4, -12, -12, -20, -20, 4, 4]);
+        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[
+            128, 0, 8, 8, 0, 0, 8, 8, -8, 8, -16, 0, 8, -8, -64, -16, 0, -16, 8, -8, 0, -16, 8, -8,
+            8, 8, 0, 0, -8, -8, -16, -16, -8, 8, 0, -16, -8, 8, 0, 16, 0, 0, -8, 24, 16, -48, 8, 8,
+            8, 8, 16, 16, 8, 8, -16, 16, 0, 16, -8, 8, -16, 32, 8, 24, 8, 8, 0, 0, -8, -8, 16, -16,
+            0, 16, 8, -8, 0, -16, 8, -8, -8, 8, -16, 0, 8, -8, 0, 16, -32, 0, 8, 8, 0, 0, 8, 8, 0,
+            0, -8, -8, -16, -16, 8, 8, 8, -8, -16, 0, 8, -8, -16, 0, 0, -16, -8, 8, -16, 0, 8, -8,
+            -8, -8, 0, 0, -8, -8, 0, 0, 12, 4, 4, -4, -4, -12, 20, -20, 4, 12, 12, -12, 4, -20, 12,
+            -12, -4, 4, -12, -4, 12, -12, 4, 12, -28, -4, 12, 4, 4, -4, 12, 4, 4, -4, -4, -12, -12,
+            -20, 12, 4, 12, -12, -12, -4, 12, -12, -12, -4, 4, -20, -4, 4, -12, -4, 12, -12, -4,
+            -12, 4, -4, -4, -12, 4, -4, -4, 4, 4, 12, -4, 4, 4, 12, -12, 12, -20, 4, 4, -4, 60,
+            -12, -4, -12, 4, -4, -4, -12, 4, -4, 4, 12, -4, 4, -12, -4, -20, -12, -12, -20, -4, 84,
+            -12, -20, -4, -12, -4, -28, -12, -4, 12, 52, 4, -20, 4, -20, 12, -12, 4, -20, -20, -12,
+            -4, -12, -12, -20, -20, 4, 4,
+        ]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), InvalidWalshValuesCount(255));
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_hadamard_transform(&[128]);
+        let boolean_function =
+            super::boolean_function_from_reverse_walsh_hadamard_transform(&[128]);
         assert!(boolean_function.is_err());
         assert_eq!(boolean_function.unwrap_err(), InvalidWalshValuesCount(1));
     }
@@ -1491,7 +1767,8 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
         assert_eq!(boolean_function.correlation_immunity(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
         assert_eq!(boolean_function.correlation_immunity(), 1);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1f").unwrap();
@@ -1500,10 +1777,14 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
         assert_eq!(boolean_function.correlation_immunity(), 4);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000")
+                .unwrap();
         assert_eq!(boolean_function.correlation_immunity(), 7);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.correlation_immunity(), 2);
     }
 
@@ -1512,7 +1793,8 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("dd0e").unwrap();
         assert_eq!(boolean_function.resiliency_order(), None);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("55C3AAC3").unwrap();
         assert_eq!(boolean_function.resiliency_order(), Some(1));
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1f").unwrap();
@@ -1521,25 +1803,39 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffff").unwrap();
         assert_eq!(boolean_function.resiliency_order(), None);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("00000000000000000000000000000000")
+                .unwrap();
         assert_eq!(boolean_function.resiliency_order(), None);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.resiliency_order(), Some(2));
     }
 
     #[test]
     fn test_biguint_truth_table() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
-        assert_eq!(boolean_function.biguint_truth_table().to_str_radix(16), "7969817cc5893ba6ac326e47619f5ad0");
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
+        assert_eq!(
+            boolean_function.biguint_truth_table().to_str_radix(16),
+            "7969817cc5893ba6ac326e47619f5ad0"
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
-        assert_eq!(boolean_function.biguint_truth_table().to_str_radix(16), "1e");
+        assert_eq!(
+            boolean_function.biguint_truth_table().to_str_radix(16),
+            "1e"
+        );
     }
 
     #[test]
     fn test_try_u64_truth_table() {
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         assert_eq!(boolean_function.try_u64_truth_table(), None);
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
@@ -1548,92 +1844,180 @@ mod tests {
 
     #[test]
     fn test_xor() {
-        let mut boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c440400810a80e200425").unwrap();
-        let boolean_function2 = super::boolean_function_from_hex_string_truth_table("22442244118811882244224411881188").unwrap();
+        let mut boolean_function =
+            super::boolean_function_from_hex_string_truth_table("80921c010276c440400810a80e200425")
+                .unwrap();
+        let boolean_function2 =
+            super::boolean_function_from_hex_string_truth_table("22442244118811882244224411881188")
+                .unwrap();
         let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
-        assert_eq!(boolean_function.printable_hex_truth_table(), "a2d63e4513fed5c8624c32ec1fa815ad");
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "a2d63e4513fed5c8624c32ec1fa815ad"
+        );
         assert_eq!(boolean_function.variables_count(), 7);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
-        assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Big);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
 
-        let mut boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        let mut boolean_function =
+            super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         let boolean_function2 = super::boolean_function_from_hex_string_truth_table("ab").unwrap();
         let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
         assert_eq!(boolean_function.variables_count(), 3);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
-        assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let mut boolean_function = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
-        let boolean_function2: BooleanFunction = Box::new(super::BigBooleanFunction::from_truth_table(BigUint::from_str_radix("ab", 16).unwrap(), 3));
+        let mut boolean_function =
+            super::boolean_function_from_hex_string_truth_table("1e").unwrap();
+        let boolean_function2: BooleanFunction = (super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ))
+        .into();
         let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
         assert_eq!(boolean_function.variables_count(), 3);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
-        assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Big);
-        assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let mut boolean_function: BooleanFunction = Box::new(super::BigBooleanFunction::from_truth_table(BigUint::from_str_radix("ab", 16).unwrap(), 3));
+        let mut boolean_function: BooleanFunction = (super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ))
+        .into();
         let boolean_function2 = super::boolean_function_from_hex_string_truth_table("1e").unwrap();
         let boolean_function3 = boolean_function.clone() ^ boolean_function2.clone();
         boolean_function ^= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
         assert_eq!(boolean_function.variables_count(), 3);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
-        assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Small);
-        assert_eq!(boolean_function3.get_boolean_function_type(), BooleanFunctionType::Big);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
     }
 
     #[test]
     fn test_walsh_fourier_values() {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ff").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [8, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [8, 0, 0, 0, 0, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("00").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("0f").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [4, 0, 0, 0, 4, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [4, 0, 0, 0, 4, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("55").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [4, 4, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [4, 4, 0, 0, 0, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("aa").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [4, -4, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [4, -4, 0, 0, 0, 0, 0, 0]
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("8001").unwrap();
-        assert_eq!(boolean_function.walsh_fourier_values(), [2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]);
+        assert_eq!(
+            boolean_function.walsh_fourier_values(),
+            [2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]
+        );
     }
 
     #[test]
     fn test_boolean_function_from_reverse_walsh_fourier_transform() {
-        let boolean_function = super::boolean_function_from_reverse_walsh_fourier_transform(&[8, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        let boolean_function =
+            super::boolean_function_from_reverse_walsh_fourier_transform(&[8, 0, 0, 0, 0, 0, 0, 0])
+                .unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "ff");
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_fourier_transform(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+        let boolean_function =
+            super::boolean_function_from_reverse_walsh_fourier_transform(&[0, 0, 0, 0, 0, 0, 0, 0])
+                .unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "00");
 
-        let boolean_function = super::boolean_function_from_reverse_walsh_fourier_transform(&[2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]).unwrap();
+        let boolean_function = super::boolean_function_from_reverse_walsh_fourier_transform(&[
+            2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2,
+        ])
+        .unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "8001");
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("80921c010276c44224422441188118822442244118811880400810a80e200425").unwrap();
+        let boolean_function = super::boolean_function_from_hex_string_truth_table(
+            "80921c010276c44224422441188118822442244118811880400810a80e200425",
+        )
+        .unwrap();
         let walsh_fourier_values = boolean_function.walsh_fourier_values();
-        let boolean_function2 = super::boolean_function_from_reverse_walsh_fourier_transform(&walsh_fourier_values).unwrap();
-        assert_eq!(boolean_function2.printable_hex_truth_table(), "80921c010276c44224422441188118822442244118811880400810a80e200425");
+        let boolean_function2 =
+            super::boolean_function_from_reverse_walsh_fourier_transform(&walsh_fourier_values)
+                .unwrap();
+        assert_eq!(
+            boolean_function2.printable_hex_truth_table(),
+            "80921c010276c44224422441188118822442244118811880400810a80e200425"
+        );
 
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
         let walsh_fourier_values = boolean_function.walsh_fourier_values();
-        let boolean_function2 = super::boolean_function_from_reverse_walsh_fourier_transform(&walsh_fourier_values).unwrap();
+        let boolean_function2 =
+            super::boolean_function_from_reverse_walsh_fourier_transform(&walsh_fourier_values)
+                .unwrap();
         assert_eq!(boolean_function2.printable_hex_truth_table(), "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        assert_eq!(boolean_function2.get_boolean_function_type(), BooleanFunctionType::Big);
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
         assert_eq!(boolean_function2.variables_count(), 9);
     }
 
@@ -1657,7 +2041,8 @@ mod tests {
         let boolean_function = super::boolean_function_from_hex_string_truth_table("ff").unwrap();
         assert_eq!(boolean_function.propagation_criterion(), 0);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("288d1b41").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("288d1b41").unwrap();
         assert_eq!(boolean_function.propagation_criterion(), 3);
     }
 
@@ -1678,7 +2063,9 @@ mod tests {
         let iter = boolean_function.iter();
         assert_eq!(iter.count(), 8);
 
-        let boolean_function = super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            super::boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         let mut iter = boolean_function.iter();
         assert_eq!(iter.next(), Some(false));
         assert_eq!(iter.next(), Some(false));
@@ -1695,7 +2082,10 @@ mod tests {
         let boolean_function = super::boolean_function_from_u64_truth_table(30, 3).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
         assert_eq!(boolean_function.variables_count(), 3);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
         let boolean_function = super::boolean_function_from_u64_truth_table(30, 7);
         assert!(boolean_function.is_err());
@@ -1706,15 +2096,26 @@ mod tests {
 
     #[test]
     fn test_boolean_function_from_biguint_truth_table() {
-        let boolean_function = super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 3).unwrap();
+        let boolean_function =
+            super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 3).unwrap();
         assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
         assert_eq!(boolean_function.variables_count(), 3);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Small);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
 
-        let boolean_function = super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 7).unwrap();
-        assert_eq!(boolean_function.printable_hex_truth_table(), "0000000000000000000000000000001e");
+        let boolean_function =
+            super::boolean_function_from_biguint_truth_table(&BigUint::from(30u32), 7).unwrap();
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "0000000000000000000000000000001e"
+        );
         assert_eq!(boolean_function.variables_count(), 7);
-        assert_eq!(boolean_function.get_boolean_function_type(), BooleanFunctionType::Big);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
 
         let boolean_function = super::boolean_function_from_u64_truth_table(300, 3);
         assert!(boolean_function.is_err());

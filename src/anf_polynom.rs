@@ -1,11 +1,11 @@
 //! Algebraic Normal Form (ANF) representation of Boolean functions.
 
-use itertools::Itertools;
-use num_bigint::BigUint;
-use std::fmt::Display;
-use num_traits::{One, Zero};
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG;
+use itertools::Itertools;
+use num_bigint::BigUint;
+use num_traits::{One, Zero};
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum PolynomialFormat {
@@ -69,24 +69,28 @@ impl AnfPolynomial {
     pub fn get_degree(&self) -> usize {
         let max_input_value: u32 = (1 << self.num_variables) - 1;
         match &self.polynomial {
-            PolynomialFormat::Small(p) => {
-                (0..=max_input_value).into_iter().map(|bit_position| {
+            PolynomialFormat::Small(p) => (0..=max_input_value)
+                .into_iter()
+                .map(|bit_position| {
                     if p & (1 << bit_position) != 0 {
                         bit_position.count_ones() as usize
                     } else {
                         0
                     }
-                }).max().unwrap_or(0)
-            }
-            PolynomialFormat::Big(p) => {
-                (0..=max_input_value).into_iter().map(|bit_position| {
+                })
+                .max()
+                .unwrap_or(0),
+            PolynomialFormat::Big(p) => (0..=max_input_value)
+                .into_iter()
+                .map(|bit_position| {
                     if p & (BigUint::one() << bit_position) != BigUint::zero() {
                         bit_position.count_ones() as usize
                     } else {
                         0
                     }
-                }).max().unwrap_or(0)
-            }
+                })
+                .max()
+                .unwrap_or(0),
         }
     }
 
@@ -151,7 +155,8 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), Some(30));
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("30", 16).unwrap(), 3);
+        let anf_polynomial =
+            AnfPolynomial::from_anf_big(&BigUint::from_str_radix("30", 16).unwrap(), 3);
         assert_eq!(anf_polynomial.get_polynomial_small(), None);
     }
 
@@ -160,8 +165,14 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_anf_small(30, 3);
         assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from(30u32));
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(), 7);
-        assert_eq!(anf_polynomial.get_polynomial_big(), BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap());
+        let anf_polynomial = AnfPolynomial::from_anf_big(
+            &BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
+            7,
+        );
+        assert_eq!(
+            anf_polynomial.get_polynomial_big(),
+            BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap()
+        );
     }
 
     #[test]
@@ -181,13 +192,22 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::one(), 3);
         assert_eq!(anf_polynomial.get_degree(), 0);
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("00000000000000000000000000000010", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(
+            &BigUint::from_str_radix("00000000000000000000000000000010", 16).unwrap(),
+            7,
+        );
         assert_eq!(anf_polynomial.get_degree(), 1);
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("00000000000000000000000000001110", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(
+            &BigUint::from_str_radix("00000000000000000000000000001110", 16).unwrap(),
+            7,
+        );
         assert_eq!(anf_polynomial.get_degree(), 2);
 
-        let anf_polynomial = AnfPolynomial::from_anf_big(&BigUint::from_str_radix("f0000000000000000000000000001110", 16).unwrap(), 7);
+        let anf_polynomial = AnfPolynomial::from_anf_big(
+            &BigUint::from_str_radix("f0000000000000000000000000001110", 16).unwrap(),
+            7,
+        );
         assert_eq!(anf_polynomial.get_degree(), 7);
     }
 

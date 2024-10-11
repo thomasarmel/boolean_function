@@ -39,10 +39,13 @@ impl Iterator for BooleanFunctionIterator {
     type Item = bool;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index > self.max_index { // limit of 31 variables
+        if self.current_index > self.max_index {
+            // limit of 31 variables
             return None;
         }
-        let result = self.inner_bool_func.compute_cellular_automata_rule(self.current_index);
+        let result = self
+            .inner_bool_func
+            .compute_cellular_automata_rule(self.current_index);
         self.current_index += 1;
         Some(result)
     }
@@ -67,7 +70,9 @@ mod tests {
         assert_eq!(iterator.next(), Some(false));
         assert_eq!(iterator.next(), None);
 
-        let boolean_function = boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0").unwrap();
+        let boolean_function =
+            boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+                .unwrap();
         let mut iterator = BooleanFunctionIterator::new(boolean_function);
         assert_eq!(iterator.next(), Some(false));
         assert_eq!(iterator.next(), Some(false));

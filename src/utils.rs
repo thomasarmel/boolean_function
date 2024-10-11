@@ -136,15 +136,13 @@ pub(crate) fn fast_anf_transform_biguint(truth_table: &BigUint, variables_count:
 
 #[allow(dead_code)] // maybe useless, but I keep it for the beauty of the code
 pub(crate) fn walsh_matrix(dim: usize) -> Vec<Vec<i8>> {
-    (0usize..(1 << dim)).map(|y| {
-        (0..(1 << dim)).map(|x| {
-            if (x & y).count_ones() & 1 == 0 {
-                1
-            } else {
-                -1
-            }
-        }).collect()
-    }).collect()
+    (0usize..(1 << dim))
+        .map(|y| {
+            (0..(1 << dim))
+                .map(|x| if (x & y).count_ones() & 1 == 0 { 1 } else { -1 })
+                .collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -163,17 +161,46 @@ mod tests {
             vec![false, false, false, false],
         ];
 
-
         let left_kernel = left_kernel_boolean(&matrix);
 
-        assert_eq!(left_kernel, [[true, true, false, false, false, false, false], [false, false, true, false, false, false, false], [false, false, false, true, false, false, false], [false, false, false, false, true, false, false], [false, false, false, false, false, true, false], [false, false, false, false, false, false, true]]);
+        assert_eq!(
+            left_kernel,
+            [
+                [true, true, false, false, false, false, false],
+                [false, false, true, false, false, false, false],
+                [false, false, false, true, false, false, false],
+                [false, false, false, false, true, false, false],
+                [false, false, false, false, false, true, false],
+                [false, false, false, false, false, false, true]
+            ]
+        );
     }
 
     #[test]
     fn test_walsh_matrix() {
         assert_eq!(super::walsh_matrix(0), vec![vec![1]]);
         assert_eq!(super::walsh_matrix(1), vec![vec![1, 1], vec![1, -1]]);
-        assert_eq!(super::walsh_matrix(2), vec![vec![1, 1, 1, 1], vec![1, -1, 1, -1], vec![1, 1, -1, -1], vec![1, -1, -1, 1]]);
-        assert_eq!(super::walsh_matrix(3), vec![vec![1, 1, 1, 1, 1, 1, 1, 1], vec![1, -1, 1, -1, 1, -1, 1, -1], vec![1, 1, -1, -1, 1, 1, -1, -1], vec![1, -1, -1, 1, 1, -1, -1, 1], vec![1, 1, 1, 1, -1, -1, -1, -1], vec![1, -1, 1, -1, -1, 1, -1, 1], vec![1, 1, -1, -1, -1, -1, 1, 1], vec![1, -1, -1, 1, -1, 1, 1, -1]]);
+        assert_eq!(
+            super::walsh_matrix(2),
+            vec![
+                vec![1, 1, 1, 1],
+                vec![1, -1, 1, -1],
+                vec![1, 1, -1, -1],
+                vec![1, -1, -1, 1]
+            ]
+        );
+        assert_eq!(
+            super::walsh_matrix(3),
+            vec![
+                vec![1, 1, 1, 1, 1, 1, 1, 1],
+                vec![1, -1, 1, -1, 1, -1, 1, -1],
+                vec![1, 1, -1, -1, 1, 1, -1, -1],
+                vec![1, -1, -1, 1, 1, -1, -1, 1],
+                vec![1, 1, 1, 1, -1, -1, -1, -1],
+                vec![1, -1, 1, -1, -1, 1, -1, 1],
+                vec![1, 1, -1, -1, -1, -1, 1, 1],
+                vec![1, -1, -1, 1, -1, 1, 1, -1]
+            ]
+        );
     }
 }

@@ -11,7 +11,7 @@ use crate::SmallBooleanFunction;
 pub const BOOLEAN_FUNCTIONS_3_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 3] = [
     SmallBooleanFunction::from_truth_table_unchecked(0xaa, 3),
     SmallBooleanFunction::from_truth_table_unchecked(0xab, 3),
-    SmallBooleanFunction::from_truth_table_unchecked(0xac, 3)
+    SmallBooleanFunction::from_truth_table_unchecked(0xac, 3),
 ];
 
 /// Representatives of all affine equivalence classes of boolean functions with 4 variables.
