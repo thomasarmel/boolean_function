@@ -4,10 +4,10 @@
 ///
 /// Example:
 /// ```rust
-/// use boolean_function::boolean_function_from_hex_string_truth_table;
+/// use boolean_function::BooleanFunction;
 /// use boolean_function::BooleanFunctionIterator;
 ///
-/// let boolean_function = boolean_function_from_hex_string_truth_table("1e").unwrap();
+/// let boolean_function = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
 /// let mut iterator = boolean_function.iter();
 /// assert_eq!(iterator.next(), Some(false));
 /// assert_eq!(iterator.next(), Some(true));
@@ -53,12 +53,12 @@ impl Iterator for BooleanFunctionIterator {
 
 #[cfg(test)]
 mod tests {
-    use crate::boolean_function_from_hex_string_truth_table;
+    use crate::BooleanFunction;
     use crate::iterator::BooleanFunctionIterator;
 
     #[test]
     fn test_boolean_function_iterator() {
-        let boolean_function = boolean_function_from_hex_string_truth_table("1e").unwrap();
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
         let mut iterator = BooleanFunctionIterator::new(boolean_function);
         assert_eq!(iterator.next(), Some(false));
         assert_eq!(iterator.next(), Some(true));
@@ -71,7 +71,7 @@ mod tests {
         assert_eq!(iterator.next(), None);
 
         let boolean_function =
-            boolean_function_from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
+            BooleanFunction::from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
         let mut iterator = BooleanFunctionIterator::new(boolean_function);
         assert_eq!(iterator.next(), Some(false));

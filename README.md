@@ -33,7 +33,7 @@ use num_traits::Num;
 fn main() {
     // Create a Boolean function from its string truth table
     const TRUTH_TABLE_STR: &'static str = "0113077C165E76A8";
-    let f: BooleanFunction = boolean_function_from_hex_string_truth_table(TRUTH_TABLE_STR).unwrap();
+    let f: BooleanFunction = BooleanFunction::from_hex_string_truth_table(TRUTH_TABLE_STR).unwrap();
     
     // How many variables does the function have?
     assert_eq!(f.variables_count(), 6);
@@ -89,7 +89,7 @@ fn main() {
     // Parallel exhaustive search on all 4-variable Boolean functions
     let count = (0..(1 << 16)).into_par_iter()
         .filter(|truth_table| {
-            let f: BooleanFunction = boolean_function_from_u64_truth_table(*truth_table, 4).unwrap();
+            let f: BooleanFunction = BooleanFunction::from_u64_truth_table(*truth_table, 4).unwrap();
             f.is_balanced()
         }).count();
     assert_eq!(count, 12870);
