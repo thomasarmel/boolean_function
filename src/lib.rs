@@ -25,6 +25,7 @@ use crate::BooleanFunctionError::{
 };
 pub use big_boolean_function::BigBooleanFunction;
 pub use boolean_function_error::BooleanFunctionError;
+use enum_dispatch::enum_dispatch;
 use gen_combinations::CombinationIterator;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
@@ -32,7 +33,7 @@ pub use small_boolean_function::SmallBooleanFunction;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::{BitXor, BitXorAssign, Deref, DerefMut, Not};
+use std::ops::{BitXor, BitXorAssign, Not};
 
 /// Internal representation of Boolean function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,6 +48,7 @@ pub enum BooleanFunctionType {
 /// This trait is implemented by [SmallBooleanFunction] and [BigBooleanFunction].
 ///
 /// You could use this trait via the [BooleanFunction] type, which encapsulates the [BooleanFunctionImpl] trait.
+#[enum_dispatch(BooleanFunction)]
 pub trait BooleanFunctionImpl: Debug + Any {
     /// Variable count of the Boolean function.
     fn variables_count(&self) -> usize;
@@ -636,84 +638,14 @@ pub trait BooleanFunctionImpl: Debug + Any {
 /// It abstracts The [SmallBooleanFunction] and [BigBooleanFunction] types, by encapsulating the [BooleanFunctionImpl] trait.
 ///
 /// Please refer to the [BooleanFunctionImpl] trait for more information.
-//pub type BooleanFunction = Box<dyn BooleanFunctionImpl + Send + Sync>;
-#[derive(Debug)]
-pub struct BooleanFunction(Box<dyn BooleanFunctionImpl + Send + Sync>);
-
-impl Deref for BooleanFunction {
-    type Target = dyn BooleanFunctionImpl + Send + Sync;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
+#[enum_dispatch]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BooleanFunction {
+    /// Struct representing a boolean function with a small truth table.
+    Small(pub SmallBooleanFunction),
+    /// Struct representing a boolean function with a big truth table.
+    Big(pub BigBooleanFunction),
 }
-
-impl DerefMut for BooleanFunction {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.0
-    }
-}
-
-impl<T: BooleanFunctionImpl + Send + Sync + 'static> From<T> for BooleanFunction {
-    fn from(boolean_function: T) -> Self {
-        BooleanFunction(Box::new(boolean_function))
-    }
-}
-
-impl Clone for BooleanFunction {
-    fn clone(&self) -> Self {
-        match self.get_boolean_function_type() {
-            BooleanFunctionType::Small => (
-                self.as_any()
-                    .downcast_ref::<SmallBooleanFunction>()
-                    .unwrap()
-                    .clone()
-            ).into(),
-            BooleanFunctionType::Big => (
-                self.as_any()
-                    .downcast_ref::<BigBooleanFunction>()
-                    .unwrap()
-                    .clone()
-            ).into(),
-        }
-    }
-}
-
-/// Equality operator for Boolean functions.
-///
-/// Two Boolean functions are equal if they have the same truth table and the same number of variables.
-impl PartialEq for BooleanFunction {
-    fn eq(&self, other: &Self) -> bool {
-        if self.get_boolean_function_type() != other.get_boolean_function_type() {
-            return false;
-        }
-        match self.get_boolean_function_type() {
-            BooleanFunctionType::Small => {
-                let self_small_boolean_function = self
-                    .as_any()
-                    .downcast_ref::<SmallBooleanFunction>()
-                    .unwrap();
-                let other_small_boolean_function = other
-                    .as_any()
-                    .downcast_ref::<SmallBooleanFunction>()
-                    .unwrap();
-                self_small_boolean_function == other_small_boolean_function
-            }
-            BooleanFunctionType::Big => {
-                let self_big_boolean_function =
-                    self.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
-                let other_big_boolean_function =
-                    other.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
-                self_big_boolean_function == other_big_boolean_function
-            }
-        }
-    }
-}
-
-/// Equality operator for Boolean functions.
-///
-/// Two Boolean functions are equal if they have the same truth table and the same number of variables.
-impl Eq for BooleanFunction {}
 
 /// In-place XOR operator for Boolean functions truth tables.
 ///
@@ -954,7 +886,7 @@ impl BooleanFunction {
 #[cfg(test)]
 mod tests {
     use crate::BooleanFunctionError::InvalidWalshValuesCount;
-    use crate::{BooleanFunction, BooleanFunctionType};
+    use crate::{BooleanFunction, BooleanFunctionImpl, BooleanFunctionType};
     use num_bigint::BigUint;
     use num_traits::Num;
     use std::collections::HashMap;

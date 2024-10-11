@@ -19,6 +19,7 @@ thiserror = "1.0.63"
 itertools = "0.13.0"
 fast-boolean-anf-transform = "0.0.2"
 gen-combinations = "0.1.0"
+enum_dispatch = "0.3.13"
 
 [dev-dependencies]
 rayon = "1.10.0"

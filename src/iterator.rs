@@ -1,5 +1,7 @@
 //! Iterators for Boolean functions.
 
+use crate::BooleanFunctionImpl;
+
 /// Iterator for the successive values of a Boolean function.
 ///
 /// Example:
@@ -55,7 +57,6 @@ impl Iterator for BooleanFunctionIterator {
 mod tests {
     use crate::BooleanFunction;
     use crate::iterator::BooleanFunctionIterator;
-
     #[test]
     fn test_boolean_function_iterator() {
         let boolean_function = BooleanFunction::from_hex_string_truth_table("1e").unwrap();

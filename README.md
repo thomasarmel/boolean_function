@@ -68,7 +68,7 @@ See [examples](examples/) directory for more examples.
 
 ### Limitations
 
-- Some constructor methods, like `boolean_function_from_hex_string_truth_table`, don't work for Boolean functions with 0 or 1 input variables (because there cannot be expressed as hex string). As these functions are trivial, it should not be a problem.
+- Some constructor methods, like `BooleanFunction::from_hex_string_truth_table`, don't work for Boolean functions with 0 or 1 input variables (because there cannot be expressed as hex string). As these functions are trivial, it should not be a problem.
 - This crate doesn't work for Boolean functions with more than 31 input variables. This is because internally some calculations are done with `u32`, which would overflow for more than 31 variables. But your computer probably doesn't have enough memory to store the truth table anyway, neither the calculation power to iterate over any subset of the $3.103 \cdot 10^{1292913986}$ 32-variable Boolean functions.
 
 ## Performance
