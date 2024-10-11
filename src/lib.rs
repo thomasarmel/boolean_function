@@ -48,7 +48,7 @@ pub enum BooleanFunctionType {
 /// This trait is implemented by [SmallBooleanFunction] and [BigBooleanFunction].
 ///
 /// You could use this trait via the [BooleanFunction] type, which encapsulates the [BooleanFunctionImpl] trait.
-#[enum_dispatch(BooleanFunction)]
+#[enum_dispatch]
 pub trait BooleanFunctionImpl: Debug + Any {
     /// Variable count of the Boolean function.
     fn variables_count(&self) -> usize;
@@ -315,6 +315,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Example
     /// ```rust
     /// // Wolfram's rule 30
+    /// use boolean_function::BooleanFunctionImpl;
     /// use boolean_function::BooleanFunction;
     /// let boolean_function = BooleanFunction::from_u64_truth_table(30, 3).unwrap();
     /// let anf_polynomial = boolean_function.algebraic_normal_form();
@@ -584,6 +585,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Example
     /// ```rust
     /// // Wolfram's rule 30
+    /// use boolean_function::BooleanFunctionImpl;
     /// use boolean_function::BooleanFunction;
     /// let boolean_function = BooleanFunction::from_u64_truth_table(30, 3).unwrap();
     /// let mut iterator = boolean_function.iter();
@@ -600,6 +602,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// # Example
     /// ```rust
     /// // Wolfram's rule 30
+    /// use boolean_function::BooleanFunctionImpl;
     /// use boolean_function::BooleanFunction;
     /// let boolean_function = BooleanFunction::from_u64_truth_table(30, 3).unwrap();
     /// assert_eq!(boolean_function.printable_hex_truth_table(), "1e");
@@ -638,7 +641,7 @@ pub trait BooleanFunctionImpl: Debug + Any {
 /// It abstracts The [SmallBooleanFunction] and [BigBooleanFunction] types, by encapsulating the [BooleanFunctionImpl] trait.
 ///
 /// Please refer to the [BooleanFunctionImpl] trait for more information.
-#[enum_dispatch]
+#[enum_dispatch(BooleanFunctionImpl)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BooleanFunction {
     /// Struct representing a boolean function with a small truth table.

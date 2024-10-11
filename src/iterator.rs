@@ -6,6 +6,7 @@ use crate::BooleanFunctionImpl;
 ///
 /// Example:
 /// ```rust
+/// use boolean_function::BooleanFunctionImpl;
 /// use boolean_function::BooleanFunction;
 /// use boolean_function::BooleanFunctionIterator;
 ///
