@@ -30,7 +30,6 @@ use gen_combinations::CombinationIterator;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
-use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign, Not};
@@ -49,7 +48,7 @@ pub enum BooleanFunctionType {
 ///
 /// You could use this trait via the [BooleanFunction] type, which encapsulates the [BooleanFunctionImpl] trait.
 #[enum_dispatch]
-pub trait BooleanFunctionImpl: Debug + Any {
+pub trait BooleanFunctionImpl: Debug {
     /// Variable count of the Boolean function.
     fn variables_count(&self) -> usize;
 
@@ -63,7 +62,6 @@ pub trait BooleanFunctionImpl: Debug + Any {
     /// Maximum input value for the Boolean function, as unsigned 32-bit integer.
     ///
     /// This is equal to $2^n - 1$, where $n$ is the number of variables.
-    #[inline]
     fn get_max_input_value(&self) -> u32 {
         (1 << self.variables_count()) - 1
     }
@@ -623,16 +621,6 @@ pub trait BooleanFunctionImpl: Debug + Any {
         self.biguint_truth_table().to_u64()
     }
 
-    /// Returns Boolean function as `dyn Any` object.
-    ///
-    /// See [core::any::Any]
-    fn as_any(&self) -> &dyn Any;
-
-    /// Returns Boolean function as mutable `dyn Any` object.
-    ///
-    /// See [core::any::Any]
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
     // TODO almost bent, mul (and tt), iterate on values
 }
 
@@ -662,27 +650,15 @@ impl BitXorAssign for BooleanFunction {
             panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
         }
         match (
-            self.get_boolean_function_type(),
-            rhs.get_boolean_function_type(),
+            self,
+            rhs,
         ) {
-            (BooleanFunctionType::Small, BooleanFunctionType::Small) => {
-                let self_small_boolean_function = self
-                    .as_any_mut()
-                    .downcast_mut::<SmallBooleanFunction>()
-                    .unwrap();
-                let rhs_small_boolean_function =
-                    rhs.as_any().downcast_ref::<SmallBooleanFunction>().unwrap();
-                *self_small_boolean_function ^= *rhs_small_boolean_function;
-            }
-            (BooleanFunctionType::Small, BooleanFunctionType::Big) => {
-                let self_small_boolean_function = self
-                    .as_any_mut()
-                    .downcast_mut::<SmallBooleanFunction>()
-                    .unwrap();
+            (BooleanFunction::Small(self_small_boolean_function), BooleanFunction::Small(rhs_small_boolean_function)) => {
+                *self_small_boolean_function ^= rhs_small_boolean_function;
+            },
+            (BooleanFunction::Small(self_small_boolean_function), BooleanFunction::Big(rhs_big_boolean_function)) => {
                 let rhs_small_boolean_function = SmallBooleanFunction::from_truth_table(
-                    rhs.as_any()
-                        .downcast_ref::<BigBooleanFunction>()
-                        .unwrap()
+                rhs_big_boolean_function
                         .biguint_truth_table()
                         .to_u64()
                         .unwrap(),
@@ -690,29 +666,16 @@ impl BitXorAssign for BooleanFunction {
                 )
                 .unwrap();
                 *self_small_boolean_function ^= rhs_small_boolean_function;
-            }
-            (BooleanFunctionType::Big, BooleanFunctionType::Small) => {
-                let self_big_boolean_function = self
-                    .as_any_mut()
-                    .downcast_mut::<BigBooleanFunction>()
-                    .unwrap();
-                let rhs_small_boolean_function = BigBooleanFunction::from_truth_table(
-                    rhs.as_any()
-                        .downcast_ref::<SmallBooleanFunction>()
-                        .unwrap()
-                        .biguint_truth_table(),
+            },
+            (BooleanFunction::Big(self_big_boolean_function), BooleanFunction::Small(rhs_small_boolean_function)) => {
+                let rhs_big_boolean_function = BigBooleanFunction::from_truth_table(
+                    rhs_small_boolean_function.biguint_truth_table(),
                     rhs_num_variables,
                 );
-                *self_big_boolean_function ^= rhs_small_boolean_function;
-            }
-            (BooleanFunctionType::Big, BooleanFunctionType::Big) => {
-                let self_big_boolean_function = self
-                    .as_any_mut()
-                    .downcast_mut::<BigBooleanFunction>()
-                    .unwrap();
-                let rhs_big_boolean_function =
-                    rhs.as_any().downcast_ref::<BigBooleanFunction>().unwrap();
-                *self_big_boolean_function ^= rhs_big_boolean_function.clone();
+                *self_big_boolean_function ^= rhs_big_boolean_function;
+            },
+            (BooleanFunction::Big(self_big_boolean_function), BooleanFunction::Big(rhs_big_boolean_function)) => {
+                *self_big_boolean_function ^= rhs_big_boolean_function;
             }
         }
     }
@@ -880,7 +843,7 @@ impl BooleanFunction {
             )?)
                 .into());
         }
-        Ok((BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables)).into())
+        Ok(BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables).into())
     }
 }
 

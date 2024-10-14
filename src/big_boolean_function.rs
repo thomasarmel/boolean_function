@@ -10,7 +10,6 @@ use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
 use num_traits::{One, Zero};
-use std::any::Any;
 use std::ops::{BitXor, BitXorAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
@@ -331,14 +330,6 @@ impl BooleanFunctionImpl for BigBooleanFunction {
 
     fn biguint_truth_table(&self) -> BigUint {
         self.truth_table.clone()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 

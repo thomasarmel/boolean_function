@@ -11,7 +11,6 @@ use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
-use std::any::Any;
 use std::ops::{BitXor, BitXorAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
@@ -353,14 +352,6 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     fn biguint_truth_table(&self) -> BigUint {
         BigUint::from(self.truth_table)
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 
