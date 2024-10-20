@@ -33,7 +33,8 @@ use num_traits::Num;
 fn main() {
     // Create a Boolean function from its string truth table
     const TRUTH_TABLE_STR: &'static str = "0113077C165E76A8";
-    let f: BooleanFunction = BooleanFunction::from_hex_string_truth_table(TRUTH_TABLE_STR).unwrap();
+    let f: BooleanFunction = BooleanFunction::from_hex_string_truth_table(TRUTH_TABLE_STR)
+        .unwrap();
     
     // How many variables does the function have?
     assert_eq!(f.variables_count(), 6);
@@ -41,18 +42,24 @@ fn main() {
     // Check if the function is bent
     assert!(f.is_bent());
     
-    // If you already know that the function has a small number of variables, you can use SmallBooleanFunction
+    // If you already know that the function has a small number of variables,
+    // you can use SmallBooleanFunction
     // It will be faster runtime and use less memory
-    let f_small: SmallBooleanFunction = SmallBooleanFunction::from_truth_table(0xac90, 4).unwrap();
+    let f_small: SmallBooleanFunction = SmallBooleanFunction::from_truth_table(0xac90, 4)
+        .unwrap();
     assert!(f_small.is_bent());
     assert!(!f_small.is_balanced()); // A bent function is not balanced
     // ANF of the function, `*` is AND and `+` is XOR
-    assert_eq!(f_small.algebraic_normal_form().to_string(), "x0*x2 + x1*x2 + x1*x3 + x2*x3 + x2");
+    assert_eq!(
+        f_small.algebraic_normal_form().to_string(),
+        "x0*x2 + x1*x2 + x1*x3 + x2*x3 + x2");
     
     // If your function has more than 6 variables, you can use BigBooleanFunction
     // So that you will avoid runtime calls to the V-table
     const AES_COMP_TT: &'static str = "4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed";
-    let f_big: BigBooleanFunction = BigBooleanFunction::from_truth_table(BigUint::from_str_radix(AES_COMP_TT, 16).unwrap(), 8);
+    let f_big: BigBooleanFunction = BigBooleanFunction::from_truth_table(
+        BigUint::from_str_radix(AES_COMP_TT, 16).unwrap(),
+        8);
     assert_eq!(f_big.nonlinearity(), 112); // AES S-Box has a nonlinearity of 112
 }
 ```
@@ -89,7 +96,8 @@ fn main() {
     // Parallel exhaustive search on all 4-variable Boolean functions
     let count = (0..(1 << 16)).into_par_iter()
         .filter(|truth_table| {
-            let f: BooleanFunction = BooleanFunction::from_u64_truth_table(*truth_table, 4).unwrap();
+            let f: BooleanFunction = BooleanFunction::from_u64_truth_table(*truth_table, 4)
+                .unwrap();
             f.is_balanced()
         }).count();
     assert_eq!(count, 12870);
