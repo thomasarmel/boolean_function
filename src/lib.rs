@@ -575,6 +575,27 @@ pub trait BooleanFunctionImpl: Debug {
             .count()
     }
 
+    /// Returns a 1-local neighbor of the Boolean function, at a specific position
+    ///
+    /// A 1-local neighbor of a Boolean function $f$ at position $i$ is a Boolean function $f_i$ such that:
+    ///
+    /// $$f_i(x) = \begin{cases}
+    /// f(x) &\text{if } x \neq i \\\\
+    ///    f(x) \oplus 1 &\text{if } x = i
+    /// \end{cases}$$
+    ///
+    /// $f_i$ is said to be *connected* to $f$.
+    ///
+    /// # Parameters
+    /// - `position`: The position $i$ at which to compute the 1-local neighbor.
+    ///
+    /// # Returns
+    /// The 1-local neighbor of the Boolean function at the given position.
+    ///
+    /// # Panics
+    /// If the position is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    fn get_1_local_neighbor(&self, position: u32) -> BooleanFunction;
+
     /// Returns an iterator over the values of the Boolean function.
     ///
     /// # Returns
@@ -2022,5 +2043,16 @@ mod tests {
 
         let boolean_function = BooleanFunction::from_u64_truth_table(300, 32);
         assert!(boolean_function.is_err());
+    }
+
+    #[test]
+    fn test_get_1_local_neighbor() {
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let neighbor = boolean_function.get_1_local_neighbor(1);
+        assert_eq!(neighbor.printable_hex_truth_table(), "1c");
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("80921c010276c440400810a80e200425").unwrap();
+        let neighbor = boolean_function.get_1_local_neighbor(0);
+        assert_eq!(neighbor.printable_hex_truth_table(), "80921c010276c440400810a80e200424");
     }
 }

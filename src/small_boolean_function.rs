@@ -269,6 +269,32 @@ impl SmallBooleanFunction {
             truth_table,
         })
     }
+
+    /// Returns a [1-local neighbor](crate::BooleanFunctionImpl::get_1_local_neighbor) of the Boolean function, at a specific position
+    ///
+    /// # Parameters
+    /// - `position`: The position $i$ at which to compute the 1-local neighbor.
+    ///
+    /// # Returns
+    /// The 1-local neighbor of the Boolean function at the given position.
+    ///
+    /// # Panics
+    /// If the position is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    pub fn get_1_local_neighbor_inner(&self, position: u32) -> Self {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        {
+            let max_input_value = self.get_max_input_value();
+            if position > max_input_value {
+                panic!("Position must be less or equal than {}", max_input_value);
+            }
+        }
+        let mut new_truth_table = self.truth_table;
+        new_truth_table ^= 1 << position;
+        Self {
+            variables_count: self.variables_count,
+            truth_table: new_truth_table,
+        }
+    }
 }
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
@@ -340,6 +366,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
     fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
         let annihilator = self.annihilator_inner(max_degree)?;
         Some(((annihilator.0).into(), annihilator.1, annihilator.2))
+    }
+
+    fn get_1_local_neighbor(&self, position: u32) -> BooleanFunction {
+        BooleanFunction::Small(self.get_1_local_neighbor_inner(position))
     }
 
     fn iter(&self) -> BooleanFunctionIterator {
@@ -763,5 +793,12 @@ mod tests {
         assert_eq!(iter.next().unwrap(), false);
         assert_eq!(iter.next().unwrap(), false);
         assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn test_get_1_local_neighbor_inner() {
+        let function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let neighbor = function.get_1_local_neighbor_inner(0);
+        assert_eq!(neighbor.get_truth_table_u64(), 0x1f);
     }
 }
