@@ -114,7 +114,7 @@ The crate is optimized to use a `u64` to store the truth table when the number o
 When using `BooleanFunction` type, the crate will detect runtime whether to use `SmallBooleanFunction` (truth table stored as `u64`) or `BigBooleanFunction` (truth table stored as `BigUint`) depending on the number of variables.
 
 If you already know that your function will have less than 6 variables, you can use the `SmallBooleanFunction` type directly.
-So that you can avoid using polymorphism, and the runtime check to the V-table.
+So that you can avoid runtime type detection.
 
 ### Disable safety checks
 
