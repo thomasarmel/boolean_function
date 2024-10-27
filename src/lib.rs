@@ -642,7 +642,7 @@ pub trait BooleanFunctionImpl: Debug {
         self.biguint_truth_table().to_u64()
     }
 
-    // TODO almost bent, mul (and tt), iterate on values
+    // TODO almost (near?) bent, mul (and tt)
 }
 
 /// This type is used to store a boolean function with any number of variables.

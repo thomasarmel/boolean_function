@@ -1,7 +1,7 @@
 [package]
 name = "boolean_function"
 description = "Mathematical analysis of Boolean functions"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 rust-version = "1.56.0"
 authors = ["Thomas Prévost"]
@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["boolean", "function", "algebra", "cryptography", "s-box"]
 categories = ["algorithms", "cryptography", "mathematics"]
 repository = "https://github.com/thomasarmel/boolean_function"
-exclude = [".github/*"]
+exclude = [".github/*", "examples"]
 
 [dependencies]
 num-traits = "0.2.19"
