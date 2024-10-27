@@ -1,7 +1,7 @@
 [package]
 name = "boolean_function"
 description = "Mathematical analysis of Boolean functions"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2021"
 rust-version = "1.56.0"
 authors = ["Thomas Prévost"]
@@ -20,6 +20,7 @@ itertools = "0.13.0"
 fast-boolean-anf-transform = "0.0.2"
 gen-combinations = "0.1.0"
 enum_dispatch = "0.3.13"
+ouroboros = "0.18.4"
 
 [dev-dependencies]
 rayon = "1.10.0"

@@ -274,4 +274,17 @@ mod tests {
         assert_eq!(factors.b, 0);
         assert_eq!(factors.c, false);
     }
+
+    /*#[test]
+    fn test_compute_affine_equivalence_big() {
+        let f = BigBooleanFunction::from_truth_table(BigUint::from_str_radix("ffffffffffffffffffffffffffffffff", 16).unwrap(), 7);
+        let g = BooleanFunction::from_hex_string_truth_table("00000000000000000000000000000000").unwrap();
+        let factors = compute_affine_equivalence(&f, &g);
+        assert!(factors.is_some());
+        let factors = factors.unwrap();
+        assert_eq!(factors.d, [0, 0, 0, 0, 0, 0, 0]); // Identity matrix
+        assert_eq!(factors.a, 0);
+        assert_eq!(factors.b, 0);
+        assert_eq!(factors.c, true);
+    }*/
 }

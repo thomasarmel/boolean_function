@@ -1,6 +1,10 @@
 //! Iterators for Boolean functions.
 
-use crate::BooleanFunctionImpl;
+use std::slice::Iter;
+use itertools::{Combinations, Itertools};
+use num_bigint::BigUint;
+use ouroboros::self_referencing;
+use crate::{BigBooleanFunction, BooleanFunction, BooleanFunctionImpl, SmallBooleanFunction};
 
 /// Iterator for the successive values of a Boolean function.
 ///
@@ -51,6 +55,105 @@ impl Iterator for BooleanFunctionIterator {
             .compute_cellular_automata_rule(self.current_index);
         self.current_index += 1;
         Some(result)
+    }
+}
+
+#[self_referencing]
+pub struct SmallCloseBalancedFunctionIterator {
+    original_truth_table: u64,
+    var_count: usize,
+    flippable_bit_positions: Vec<usize>,
+    flips_count: usize,
+    #[borrows(flippable_bit_positions)]
+    #[not_covariant]
+    combination_generator: Combinations<Iter<'this, usize>>,
+}
+
+impl SmallCloseBalancedFunctionIterator {
+    pub(crate) fn create(original_function: &SmallBooleanFunction, flippable_bit_positions: Vec<usize>, flips_count: usize) -> Self {
+        SmallCloseBalancedFunctionIteratorBuilder {
+            original_truth_table: original_function.get_truth_table_u64(),
+            var_count: original_function.variables_count(),
+            flippable_bit_positions,
+            flips_count,
+            combination_generator_builder: |flippable_pos| flippable_pos.iter().combinations(flips_count),
+        }.build()
+    }
+}
+
+impl Iterator for SmallCloseBalancedFunctionIterator {
+    type Item = SmallBooleanFunction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut new_tt = self.borrow_original_truth_table().clone();
+        let var_count = self.borrow_var_count().clone();
+
+        let bits_to_flip = self.with_mut(|fields| {
+            fields.combination_generator.next()
+        })?;
+        for bit_flip_pos in bits_to_flip {
+            new_tt ^= 1u64 << bit_flip_pos;
+        }
+
+        Some(SmallBooleanFunction::from_truth_table_unchecked(new_tt, var_count))
+    }
+}
+
+#[self_referencing]
+pub struct BigCloseBalancedFunctionIterator {
+    original_truth_table: BigUint,
+    var_count: usize,
+    flippable_bit_positions: Vec<usize>,
+    flips_count: usize,
+    #[borrows(flippable_bit_positions)]
+    #[not_covariant]
+    combination_generator: Combinations<Iter<'this, usize>>,
+}
+
+impl BigCloseBalancedFunctionIterator {
+    pub(crate) fn create(original_function: &BigBooleanFunction, flippable_bit_positions: Vec<usize>, flips_count: usize) -> Self {
+        BigCloseBalancedFunctionIteratorBuilder {
+            original_truth_table: original_function.biguint_truth_table(),
+            var_count: original_function.variables_count(),
+            flippable_bit_positions,
+            flips_count,
+            combination_generator_builder: |flippable_pos| flippable_pos.iter().combinations(flips_count),
+        }.build()
+    }
+}
+
+impl Iterator for BigCloseBalancedFunctionIterator {
+    type Item = BigBooleanFunction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut new_tt = self.borrow_original_truth_table().clone();
+        let var_count = self.borrow_var_count().clone();
+
+        let bits_to_flip = self.with_mut(|fields| {
+            fields.combination_generator.next()
+        })?;
+        for bit_flip_pos in bits_to_flip {
+            let bit_flip_pos = *bit_flip_pos as u64;
+            new_tt.set_bit(bit_flip_pos, !new_tt.bit(bit_flip_pos))
+        }
+
+        Some(BigBooleanFunction::from_truth_table(new_tt, var_count))
+    }
+}
+
+pub enum CloseBalancedFunctionIterator {
+    Small(SmallCloseBalancedFunctionIterator),
+    Big(BigCloseBalancedFunctionIterator),
+}
+
+impl Iterator for CloseBalancedFunctionIterator {
+    type Item = BooleanFunction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            CloseBalancedFunctionIterator::Small(it) => Some(it.next()?.into()),
+            CloseBalancedFunctionIterator::Big(it) => Some(it.next()?.into())
+        }
     }
 }
 

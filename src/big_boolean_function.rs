@@ -3,7 +3,7 @@ use crate::anf_polynom::AnfPolynomial;
 use crate::boolean_function_error::TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
-use crate::iterator::BooleanFunctionIterator;
+use crate::iterator::{BigCloseBalancedFunctionIterator, BooleanFunctionIterator, CloseBalancedFunctionIterator};
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use itertools::{enumerate, Itertools};
@@ -274,6 +274,38 @@ impl BigBooleanFunction {
             truth_table: new_truth_table,
         }
     }
+
+    /// Returns an iterator over the closest possible balanced Boolean functions.
+    ///
+    /// See [BooleanFunctionImpl::close_balanced_functions_iterator](crate::BooleanFunctionImpl::close_balanced_functions_iterator) for more details.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over close balanced Boolean functions, or an error if the function is already balanced.
+    ///
+    /// # Note
+    /// It is assumed that the function truth table is correctly sanitized, so be careful if you generated it with `unsafe_disable_safety_checks` feature activated.
+    pub fn close_balanced_functions_iterator_inner(&self) -> Result<BigCloseBalancedFunctionIterator, BooleanFunctionError> {
+        if self.is_balanced() {
+            return Err(BooleanFunctionError::AlreadyBalanced);
+        }
+        let ones_count = self.truth_table.count_ones();
+        let zeros_count = (1 << self.variables_count) - ones_count;
+
+        let bits_to_flip_count = (ones_count.abs_diff(zeros_count) / 2) as usize;
+
+        let flippable_positions = if ones_count > zeros_count {
+            (0..(1 << self.variables_count))
+                .filter(|i| self.truth_table.bit(*i as u64))
+                .collect::<Vec<usize>>()
+        } else {
+            (0..(1 << self.variables_count))
+                .filter(|i| !self.truth_table.bit(*i as u64))
+                .collect::<Vec<usize>>()
+        };
+
+        Ok(BigCloseBalancedFunctionIterator::create(self, flippable_positions, bits_to_flip_count))
+    }
 }
 impl BooleanFunctionImpl for BigBooleanFunction {
     #[inline]
@@ -360,6 +392,10 @@ impl BooleanFunctionImpl for BigBooleanFunction {
 
     fn biguint_truth_table(&self) -> BigUint {
         self.truth_table.clone()
+    }
+
+    fn close_balanced_functions_iterator(&self) -> Result<CloseBalancedFunctionIterator, BooleanFunctionError> {
+        Ok(CloseBalancedFunctionIterator::Big(self.close_balanced_functions_iterator_inner()?))
     }
 }
 
@@ -908,5 +944,34 @@ mod tests {
             neighbor.printable_hex_truth_table(),
             "80921c010276c440400810a80e200424"
         );
+    }
+
+    #[test]
+    fn test_close_balanced_functions_iterator_inner() {
+        let already_balanced_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 16).unwrap(),
+            8);
+        assert!(already_balanced_function.close_balanced_functions_iterator_inner().is_err());
+
+        let bent_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("80329780469d0b85cd2ad63e1a6ba42adbd83c9a0c55e4e8c99f227b0ffc1418", 16).unwrap(),
+            8);
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner();
+        assert!(close_balanced_iterator.is_ok());
+        let mut close_balanced_iterator = close_balanced_iterator.unwrap();
+        //assert_eq!(close_balanced_iterator.into_iter().count(), 840261910995); // 120 choose 8, but it's too large for unit test :')
+        for _ in 0..10 {
+            assert!(close_balanced_iterator.next().unwrap().is_balanced());
+        }
+
+        let bent_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("7fcd687fb962f47a32d529c1e5945bd52427c365f3aa1b173660dd84f003ebe7", 16).unwrap(),
+            8);
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner();
+        assert!(close_balanced_iterator.is_ok());
+        let mut close_balanced_iterator = close_balanced_iterator.unwrap();
+        for _ in 0..10 {
+            assert!(close_balanced_iterator.next().unwrap().is_balanced());
+        }
     }
 }

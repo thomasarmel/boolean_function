@@ -27,6 +27,9 @@ pub enum BooleanFunctionError {
     /// The truth table is too big for the number of variables: it must be $< 2^{2^n}$, where n is the number of variables.
     #[error("Truth table is too big for variables count")]
     TooBigTruthTableForVarCount,
+    /// Cannot generate close balanced Boolean function iterator, as the given function is already balanced
+    #[error("This Boolean function is already balanced")]
+    AlreadyBalanced,
 }
 
 pub(crate) const XOR_DIFFERENT_VAR_COUNT_PANIC_MSG: &'static str =

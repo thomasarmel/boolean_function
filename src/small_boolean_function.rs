@@ -1,7 +1,7 @@
 use crate::anf_polynom::AnfPolynomial;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
-use crate::iterator::BooleanFunctionIterator;
+use crate::iterator::{BooleanFunctionIterator, CloseBalancedFunctionIterator, SmallCloseBalancedFunctionIterator};
 use crate::utils::left_kernel_boolean;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::BooleanFunctionError::TooBigTruthTableForVarCount;
@@ -295,6 +295,38 @@ impl SmallBooleanFunction {
             truth_table: new_truth_table,
         }
     }
+
+    /// Returns an iterator over the closest possible balanced Boolean functions.
+    ///
+    /// See [BooleanFunctionImpl::close_balanced_functions_iterator](crate::BooleanFunctionImpl::close_balanced_functions_iterator) for more details.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over close balanced Boolean functions, or an error if the function is already balanced.
+    ///
+    /// # Note
+    /// It is assumed that the function truth table is correctly sanitized, so be careful if you generated it with `unsafe_disable_safety_checks` feature activated.
+    pub fn close_balanced_functions_iterator_inner(&self) -> Result<SmallCloseBalancedFunctionIterator, BooleanFunctionError> {
+        if self.is_balanced() {
+            return Err(BooleanFunctionError::AlreadyBalanced);
+        }
+        let ones_count = self.truth_table.count_ones();
+        let zeros_count = (1 << self.variables_count) - ones_count;
+
+        let bits_to_flip_count = (ones_count.abs_diff(zeros_count) / 2) as usize;
+
+        let flippable_positions = if ones_count > zeros_count {
+            (0..(1 << self.variables_count))
+                .filter(|i| (self.truth_table >> i) & 1u64 != 0u64)
+                .collect::<Vec<usize>>()
+        } else {
+            (0..(1 << self.variables_count))
+                .filter(|i| (self.truth_table >> i) & 1u64 == 0u64)
+                .collect::<Vec<usize>>()
+        };
+
+        Ok(SmallCloseBalancedFunctionIterator::create(self, flippable_positions, bits_to_flip_count))
+    }
 }
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
@@ -382,6 +414,10 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
 
     fn biguint_truth_table(&self) -> BigUint {
         BigUint::from(self.truth_table)
+    }
+
+    fn close_balanced_functions_iterator(&self) -> Result<CloseBalancedFunctionIterator, BooleanFunctionError> {
+        Ok(CloseBalancedFunctionIterator::Small(self.close_balanced_functions_iterator_inner()?))
     }
 }
 
@@ -800,5 +836,30 @@ mod tests {
         let function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
         let neighbor = function.get_1_local_neighbor_inner(0);
         assert_eq!(neighbor.get_truth_table_u64(), 0x1f);
+    }
+
+    #[test]
+    fn test_close_balanced_functions_iterator_inner() {
+        let already_balanced_function = SmallBooleanFunction::from_truth_table(0xaaaa, 4).unwrap();
+        assert!(already_balanced_function.close_balanced_functions_iterator_inner().is_err());
+
+        let bent_function = SmallBooleanFunction::from_truth_table(0xac90, 4).unwrap();
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner();
+        assert!(close_balanced_iterator.is_ok());
+        let close_balanced_iterator = close_balanced_iterator.unwrap();
+        assert_eq!(close_balanced_iterator.into_iter().count(), 45); // 10 choose 2
+
+        let mut close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner().unwrap();
+        assert!(close_balanced_iterator.all(|f| f.is_balanced()));
+
+
+        let bent_function = SmallBooleanFunction::from_truth_table(0x536f, 4).unwrap();
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner();
+        assert!(close_balanced_iterator.is_ok());
+        let close_balanced_iterator = close_balanced_iterator.unwrap();
+        assert_eq!(close_balanced_iterator.into_iter().count(), 45); // 10 choose 2
+
+        let mut close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner().unwrap();
+        assert!(close_balanced_iterator.all(|f| f.is_balanced()));
     }
 }

@@ -33,6 +33,7 @@ pub use small_boolean_function::SmallBooleanFunction;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{BitXor, BitXorAssign, Not};
+use crate::iterator::CloseBalancedFunctionIterator;
 
 /// Internal representation of Boolean function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -660,6 +661,37 @@ pub trait BooleanFunctionImpl: Debug {
         self.biguint_truth_table().to_u64()
     }
 
+    /// Returns an iterator over the closest possible balanced Boolean functions.
+    ///
+    /// "closest" means the minimum possible Hamming distance over the truth table.
+    ///
+    /// This is particularly useful if you want to extract a set of balanced functions from a bent function.
+    /// So that you can generate highly nonlinear balanced functions.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over close balanced Boolean functions, or an error if the function is already balanced.
+    ///
+    /// # Note
+    /// It is assumed that the function truth table is correctly sanitized, so be careful if you generated it with `unsafe_disable_safety_checks` feature activated.
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::BooleanFunction;
+    ///  use crate::boolean_function::BooleanFunctionImpl;
+    ///
+    /// let bent_function = BooleanFunction::from_hex_string_truth_table(
+    ///             "80329780469d0b85cd2ad63e1a6ba42adbd83c9a0c55e4e8c99f227b0ffc1418"
+    ///         ).unwrap();
+    /// let close_balanced_iterator = bent_function.close_balanced_functions_iterator();
+    /// assert!(close_balanced_iterator.is_ok());
+    /// let mut close_balanced_iterator = close_balanced_iterator.unwrap();
+    /// let highly_nonlinear_balanced_function = close_balanced_iterator.next().unwrap();
+    /// assert!(highly_nonlinear_balanced_function.is_balanced());
+    /// assert_eq!(highly_nonlinear_balanced_function.nonlinearity(), 112);
+    /// ```
+    fn close_balanced_functions_iterator(&self) -> Result<CloseBalancedFunctionIterator, BooleanFunctionError>;
+
     // TODO, mul (and tt)
 }
 
@@ -800,10 +832,10 @@ impl BooleanFunction {
     ) -> Result<Self, BooleanFunctionError> {
         const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
         if walsh_hadamard_values.len() > MAX_WALSH_VALUES_SMALL {
-            return Ok((BigBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?).into());
+            return Ok(BigBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?.into());
             // Error is handled in BigBooleanFunction constructor
         }
-        Ok((SmallBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?).into())
+        Ok(SmallBooleanFunction::from_walsh_hadamard_values(walsh_hadamard_values)?.into())
     }
 
     /// Creates a new BooleanFunction from a list of integers representing the [Walsh-Fourier transform](BooleanFunctionImpl::walsh_fourier_values), by applying a reverse Walsh-Fourier transform.
@@ -822,10 +854,10 @@ impl BooleanFunction {
     ) -> Result<Self, BooleanFunctionError> {
         const MAX_WALSH_VALUES_SMALL: usize = 64; // (2^6)
         if walsh_fourier_values.len() > MAX_WALSH_VALUES_SMALL {
-            return Ok((BigBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?).into());
+            return Ok(BigBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?.into());
             // Error is handled in BigBooleanFunction constructor
         }
-        Ok((SmallBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?).into())
+        Ok(SmallBooleanFunction::from_walsh_fourier_values(walsh_fourier_values)?.into())
     }
 
     /// Creates a new BooleanFunction from an u64 representing the truth table (meaning the Boolean function has 6 or less input variables).
@@ -846,7 +878,7 @@ impl BooleanFunction {
         truth_table: u64,
         num_variables: usize,
     ) -> Result<BooleanFunction, BooleanFunctionError> {
-        Ok((SmallBooleanFunction::from_truth_table(truth_table, num_variables)?).into())
+        Ok(SmallBooleanFunction::from_truth_table(truth_table, num_variables)?.into())
     }
 
     /// Creates a new BooleanFunction from a BigUint representing the truth table.
@@ -876,10 +908,10 @@ impl BooleanFunction {
             return Err(BooleanFunctionError::TooBigVariableCount(31));
         }
         if num_variables <= 6 {
-            return Ok((SmallBooleanFunction::from_truth_table(
+            return Ok(SmallBooleanFunction::from_truth_table(
                 truth_table.to_u64().unwrap(),
                 num_variables,
-            )?)
+            )?
                 .into());
         }
         Ok(BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables).into())
@@ -2088,5 +2120,36 @@ mod tests {
         let boolean_function = BooleanFunction::from_hex_string_truth_table("80921c010276c440400810a80e200425").unwrap();
         let neighbor = boolean_function.get_1_local_neighbor(0);
         assert_eq!(neighbor.printable_hex_truth_table(), "80921c010276c440400810a80e200424");
+    }
+
+    #[test]
+    fn test_close_balanced_functions_iterator() {
+        let balanced_function = BooleanFunction::from_hex_string_truth_table("aaaa").unwrap();
+        assert!(balanced_function.close_balanced_functions_iterator().is_err());
+
+        let bent_function = BooleanFunction::from_hex_string_truth_table("ac90").unwrap();
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator();
+        assert!(close_balanced_iterator.is_ok());
+        let close_balanced_iterator = close_balanced_iterator.unwrap();
+        assert_eq!(close_balanced_iterator.into_iter().count(), 45); // 10 choose 2
+
+        let mut close_balanced_iterator = bent_function.close_balanced_functions_iterator().unwrap();
+        assert!(close_balanced_iterator.all(|f| f.is_balanced()));
+
+
+        let balanced_function = BooleanFunction::from_hex_string_truth_table(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ).unwrap();
+        assert!(balanced_function.close_balanced_functions_iterator().is_err());
+
+        let bent_function = BooleanFunction::from_hex_string_truth_table(
+            "80329780469d0b85cd2ad63e1a6ba42adbd83c9a0c55e4e8c99f227b0ffc1418"
+        ).unwrap();
+        let close_balanced_iterator = bent_function.close_balanced_functions_iterator();
+        assert!(close_balanced_iterator.is_ok());
+        let mut close_balanced_iterator = close_balanced_iterator.unwrap();
+        for _ in 0..10 {
+            assert!(close_balanced_iterator.next().unwrap().is_balanced());
+        }
     }
 }
