@@ -386,6 +386,24 @@ pub trait BooleanFunctionImpl: Debug {
             == ((1 << self.variables_count()) - (1 << (self.variables_count() >> 1))) >> 1
     }
 
+    /// Returns `true` if the Boolean function is near-bent.
+    ///
+    /// A $n$-variable Boolean function is said to be *near-bent* if $n$ is odd,
+    /// and its [Walsh-Hamamard](#method.walsh_hadamard_values) spectrum contains all and only the 3 values $\\{0, \pm 2^{\frac{n+1}{2}}\\}$.
+    fn is_near_bent(&self) -> bool {
+        if self.variables_count() & 1 == 0 {
+            return false;
+        }
+        let absolute_walsh_allowed_value = 1 << ((self.variables_count() + 1) >> 1);
+        let walsh_hadamard_spectrum = (0..=self.get_max_input_value())
+            .map(|x| self.walsh_hadamard_transform(x))
+            .collect::<HashSet<_>>();
+
+        walsh_hadamard_spectrum.len() == 3 && walsh_hadamard_spectrum.iter().all(|w| {
+            *w == 0 || *w == absolute_walsh_allowed_value || *w == -absolute_walsh_allowed_value
+        })
+    }
+
     /// Returns, if it exists, an annihilator function, its degree and the dimension of annihilator vector space.
     ///
     /// The annihilator of a Boolean function $f$ is a non-null Boolean function $g$ such that:
@@ -642,7 +660,7 @@ pub trait BooleanFunctionImpl: Debug {
         self.biguint_truth_table().to_u64()
     }
 
-    // TODO almost (near?) bent, mul (and tt)
+    // TODO, mul (and tt)
 }
 
 /// This type is used to store a boolean function with any number of variables.
@@ -1323,6 +1341,22 @@ mod tests {
         let boolean_function =
             BooleanFunction::from_hex_string_truth_table("00000000ffffffff").unwrap();
         assert!(!boolean_function.is_bent());
+    }
+
+    #[test]
+    fn test_is_near_bent() {
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("f9")
+            .unwrap();
+        assert!(boolean_function.is_near_bent());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ff")
+            .unwrap();
+        assert!(!boolean_function.is_near_bent());
+
+        // even variable count -> cannot be near-bent
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("f9f9")
+            .unwrap();
+        assert!(!boolean_function.is_near_bent());
     }
 
     #[test]
