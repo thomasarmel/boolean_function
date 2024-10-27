@@ -8,7 +8,7 @@
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Zero;
-use crate::{utils, BooleanFunction, BooleanFunctionImpl, BooleanFunctionType, SmallBooleanFunction};
+use crate::{utils, BooleanFunctionImpl, BooleanFunctionType, SmallBooleanFunction};
 
 /// Representatives of all affine equivalence classes of boolean functions with 3 variables
 pub const BOOLEAN_FUNCTIONS_3_VAR_AFFINE_EQ_CLASSES: [SmallBooleanFunction; 3] = [
@@ -112,7 +112,18 @@ pub struct AffineEquivalenceFactors {
 ///
 /// # Note
 /// If `f` anf `g` don't have the same input variable count, the function will return `None`.
-pub fn compute_affine_equivalence(f: &BooleanFunction, g: &BooleanFunction) -> Option<AffineEquivalenceFactors> {
+///
+/// # Example
+/// ```rust
+/// use boolean_function::{BooleanFunction, SmallBooleanFunction};
+/// use boolean_function::affine_equivalence_classes::compute_affine_equivalence;
+/// // 4-variable bent functions equivalence class
+/// let f = BooleanFunction::from_hex_string_truth_table("ac90").unwrap();
+/// let g = SmallBooleanFunction::from_truth_table(0xdbd4, 4).unwrap();
+///
+/// // f and g are affine-equivalent
+/// assert!(compute_affine_equivalence(&f, &g).is_some());
+pub fn compute_affine_equivalence(f: &impl BooleanFunctionImpl, g: &impl BooleanFunctionImpl) -> Option<AffineEquivalenceFactors> {
     if f.variables_count() != g.variables_count() || f.variables_count() == 0 {
         return None;
     }
@@ -193,7 +204,7 @@ pub fn compute_affine_equivalence(f: &BooleanFunction, g: &BooleanFunction) -> O
 #[cfg(test)]
 mod tests {
     use crate::affine_equivalence_classes::compute_affine_equivalence;
-    use crate::BooleanFunction;
+    use crate::{BooleanFunction, SmallBooleanFunction};
 
     #[test]
     fn test_compute_affine_equivalence_not_same_var_count() {
@@ -248,6 +259,19 @@ mod tests {
         assert_eq!(factors.d, [1, 2, 6, 8]);
         assert_eq!(factors.a, 0);
         assert_eq!(factors.b, 10);
+        assert_eq!(factors.c, false);
+    }
+
+    #[test]
+    fn test_compute_affine_equivalence_small() {
+        let f = SmallBooleanFunction::from_truth_table(0x1234, 4).unwrap();
+        let g = BooleanFunction::from_hex_string_truth_table("1234").unwrap();
+        let factors = compute_affine_equivalence(&f, &g);
+        assert!(factors.is_some());
+        let factors = factors.unwrap();
+        assert_eq!(factors.d, [1, 2, 4, 8]); // Identity matrix
+        assert_eq!(factors.a, 0);
+        assert_eq!(factors.b, 0);
         assert_eq!(factors.c, false);
     }
 }
