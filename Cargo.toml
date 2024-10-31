@@ -12,18 +12,18 @@ repository = "https://github.com/thomasarmel/boolean_function"
 exclude = [".github/*", "examples"]
 
 [dependencies]
-num-traits = "0.2.19"
-num-integer = "0.1.46"
-num-bigint = "0.4.6"
-thiserror = "1.0.64"
-itertools = "0.13.0"
-fast-boolean-anf-transform = "0.0.2"
+num-traits = "0.2"
+num-integer = "0.1"
+num-bigint = "0.4"
+thiserror = "1.0"
+itertools = "0.13"
+fast-boolean-anf-transform = "0.0.3"
 gen-combinations = "0.1.0"
-enum_dispatch = "0.3.13"
-ouroboros = "0.18.4"
+enum_dispatch = "0.3"
+ouroboros = "0.18"
 
 [dev-dependencies]
-rayon = "1.10.0"
+rayon = "1.10"
 
 [features]
 unsafe_disable_safety_checks = []
