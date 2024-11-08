@@ -791,7 +791,8 @@ impl BooleanFunction {
     /// # Example
     /// ```rust
     /// use boolean_function::BooleanFunction;
-    /// let boolean_function = BooleanFunction::from_hex_string_truth_table("0969817CC5893BA6").unwrap();
+    /// let boolean_function = BooleanFunction::from_hex_string_truth_table("0969817CC5893BA6")
+    ///     .unwrap();
     /// ```
     pub fn from_hex_string_truth_table(
         hex_truth_table: &str,
@@ -877,7 +878,7 @@ impl BooleanFunction {
     pub fn from_u64_truth_table(
         truth_table: u64,
         num_variables: usize,
-    ) -> Result<BooleanFunction, BooleanFunctionError> {
+    ) -> Result<Self, BooleanFunctionError> {
         Ok(SmallBooleanFunction::from_truth_table(truth_table, num_variables)?.into())
     }
 
@@ -898,7 +899,7 @@ impl BooleanFunction {
     pub fn from_biguint_truth_table(
         truth_table: &BigUint,
         num_variables: usize,
-    ) -> Result<BooleanFunction, BooleanFunctionError> {
+    ) -> Result<Self, BooleanFunctionError> {
         #[cfg(not(feature = "unsafe_disable_safety_checks"))]
         if truth_table.bits() > (1 << num_variables) {
             return Err(BooleanFunctionError::TooBigTruthTableForVarCount);
@@ -929,17 +930,36 @@ impl BooleanFunction {
     /// 
     /// # Returns
     /// The BooleanFunction corresponding to the ANF string representation, or an error if the input string doesn't respect the format and `unsafe_disable_safety_checks` feature is not activated.
-    pub fn from_anf_polynomial_str(anf_polynomial: &str, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::{BooleanFunction, BooleanFunctionImpl};
+    ///
+    /// let rule_30 = BooleanFunction::from_anf_polynomial_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+    /// assert_eq!(rule_30.printable_hex_truth_table(), "1e");
+    /// ```
+    pub fn from_anf_polynomial_str(anf_polynomial: &str, num_variables: usize) -> Result<Self, BooleanFunctionError> {
         Ok(AnfPolynomial::from_str(anf_polynomial, num_variables)?.to_boolean_function())
+    }
+
+    /// Computes Boolean Function from ANF polynomial
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The polynomial in Algebraic Normal Form
+    ///
+    /// # Returns
+    /// The BooleanFunction corresponding to the ANF polynomial
+    pub fn from_anf_polynomial(anf_polynomial: &AnfPolynomial) -> Self {
+        anf_polynomial.to_boolean_function()
     }
 }
 
-// TODO from AnfPolynomial
+// TODO from ANF in Small and Big Boolean functions
 
 #[cfg(test)]
 mod tests {
     use crate::BooleanFunctionError::InvalidWalshValuesCount;
-    use crate::{BooleanFunction, BooleanFunctionImpl, BooleanFunctionType};
+    use crate::{AnfPolynomial, BooleanFunction, BooleanFunctionImpl, BooleanFunctionType};
     use num_bigint::BigUint;
     use num_traits::Num;
     use std::collections::HashMap;
@@ -2177,6 +2197,17 @@ mod tests {
 
         let anf_str = "x0*x1*x2*x3*x4*x5*x6 + x7";
         let boolean_function = BooleanFunction::from_anf_polynomial_str(anf_str, 8).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
+    }
+
+    #[test]
+    fn test_from_anf_polynomial() {
+        let rule_30_anf = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+        let rule_30_function = BooleanFunction::from_anf_polynomial(&rule_30_anf);
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+
+        let anf = AnfPolynomial::from_str("x0*x1*x2*x3*x4*x5*x6 + x7", 8).unwrap();
+        let boolean_function = BooleanFunction::from_anf_polynomial(&anf);
         assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
     }
 }

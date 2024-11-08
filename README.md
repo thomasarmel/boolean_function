@@ -61,6 +61,10 @@ fn main() {
         BigUint::from_str_radix(AES_COMP_TT, 16).unwrap(),
         8);
     assert_eq!(f_big.nonlinearity(), 112); // AES S-Box has a nonlinearity of 112
+    
+    // You can also import a Boolean function from its polynomial ANF form
+    let rule_30 = BooleanFunction::from_anf_polynomial_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+    assert_eq!(rule_30.printable_hex_truth_table(), "1e");
 }
 ```
 
