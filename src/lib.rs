@@ -916,9 +916,25 @@ impl BooleanFunction {
         }
         Ok(BigBooleanFunction::from_truth_table(truth_table.clone(), num_variables).into())
     }
+
+    /// Computes Boolean Function from string ANF representation
+    ///
+    /// The ANF string representation must be in exact form "`x0*x2*x3 + x2*x3 + x1 + 1`".
+    ///
+    /// X's index starts at 0, meaning the maximum index is variable count - 1.
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The string representation of the ANF form
+    /// - `num_variables`: Variable count of the polynomial
+    /// 
+    /// # Returns
+    /// The BooleanFunction corresponding to the ANF string representation, or an error if the input string doesn't respect the format and `unsafe_disable_safety_checks` feature is not activated.
+    pub fn from_anf_polynomial_str(anf_polynomial: &str, num_variables: usize) -> Result<BooleanFunction, BooleanFunctionError> {
+        Ok(AnfPolynomial::from_str(anf_polynomial, num_variables)?.to_boolean_function())
+    }
 }
 
-// TODO from polynomial etc.
+// TODO from AnfPolynomial
 
 #[cfg(test)]
 mod tests {
@@ -2151,5 +2167,16 @@ mod tests {
         for _ in 0..10 {
             assert!(close_balanced_iterator.next().unwrap().is_balanced());
         }
+    }
+
+    #[test]
+    fn test_from_anf_polynomial_str() {
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let rule_30_function = BooleanFunction::from_anf_polynomial_str(rule_30_anf_str, 3).unwrap();
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+
+        let anf_str = "x0*x1*x2*x3*x4*x5*x6 + x7";
+        let boolean_function = BooleanFunction::from_anf_polynomial_str(anf_str, 8).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
     }
 }

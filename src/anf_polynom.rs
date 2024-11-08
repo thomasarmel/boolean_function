@@ -6,7 +6,9 @@ use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::{One, Zero};
 use std::fmt::Display;
-use crate::BooleanFunctionError;
+use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
+use crate::{BigBooleanFunction, BooleanFunction, BooleanFunctionError, SmallBooleanFunction};
+use crate::utils::fast_anf_transform_biguint;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum PolynomialFormat {
@@ -127,7 +129,7 @@ impl AnfPolynomial {
     ///
     /// Representation must be in the form "`x0*x2*x3 + x2*x3 + x1 + 1`".
     ///
-    /// X's index start at 0, meaning the maximum index is variable count - 1.
+    /// X's index starts at 0, meaning the maximum index is variable count - 1.
     ///
     /// # Parameters:
     /// - `anf_polynomial`: The string representation of the ANF form
@@ -209,6 +211,31 @@ impl AnfPolynomial {
             PolynomialFormat::Big(_) => crate::BooleanFunctionType::Big
         }
     }
+
+    /// Convert ANF polynomial to the corresponding Boolean Function, using fast ANF transform algorithm
+    /// 
+    /// # Returns
+    /// A Boolean function corresponding to the polynomial
+    pub fn to_boolean_function(&self) -> BooleanFunction {
+        match &self.polynomial {
+            PolynomialFormat::Small(polynomial) => {
+                BooleanFunction::Small(
+                    SmallBooleanFunction::from_truth_table(
+                        fast_bool_anf_transform_unsigned(*polynomial, self.num_variables),
+                        self.num_variables
+                    ).unwrap()
+                )
+            }
+            PolynomialFormat::Big(polynomial) => {
+                BooleanFunction::Big(
+                    BigBooleanFunction::from_truth_table(
+                        fast_anf_transform_biguint(polynomial, self.num_variables),
+                        self.num_variables
+                    )
+                )
+            }
+        }
+    }
 }
 
 /// Display implementation for `AnfPolynomial`.
@@ -225,7 +252,7 @@ mod tests {
     use crate::anf_polynom::AnfPolynomial;
     use num_bigint::BigUint;
     use num_traits::{Num, One, Zero};
-    use crate::BooleanFunctionError;
+    use crate::{BooleanFunctionError, BooleanFunctionImpl};
 
     #[test]
     fn test_get_polynomial_small() {
@@ -356,5 +383,18 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_str(anf_str, 8);
         assert!(anf_polynomial.is_err());
         assert_eq!(anf_polynomial.unwrap_err(), BooleanFunctionError::ErrorParsingAnfString);
+    }
+
+    #[test]
+    fn test_to_boolean_function() {
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let rule_30_polynomial = AnfPolynomial::from_str(rule_30_anf_str, 3).unwrap();
+        let rule_30_function = rule_30_polynomial.to_boolean_function();
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+
+        let anf_str = "x0*x1*x2*x3*x4*x5*x6 + x7";
+        let anf_polynomial = AnfPolynomial::from_str(anf_str, 8).unwrap();
+        let boolean_function = anf_polynomial.to_boolean_function();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
     }
 }
