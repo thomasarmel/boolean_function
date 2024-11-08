@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 /// Possible errors for the boolean function library.
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Clone)]
 pub enum BooleanFunctionError {
     /// Error parsing hex string: the string length must be a power of 2 to represent a truth table.
     #[error("Hex truth table length must be a power of 2")]
@@ -30,6 +30,12 @@ pub enum BooleanFunctionError {
     /// Cannot generate close balanced Boolean function iterator, as the given function is already balanced
     #[error("This Boolean function is already balanced")]
     AlreadyBalanced,
+    /// Error parsing ANF string, should be in the form "x0*x2*x3 + x2*x3 + x1 + 1"
+    #[error("Error parsing ANF string, should be in the form \"x0*x2*x3 + x2*x3 + x1 + 1\"")]
+    ErrorParsingAnfString,
+    /// The given factor is too big for the variable count. For example, x4 cannot exist if variable count = 4
+    #[error("There are {0} variables in this ANF form, x{1} factor shouldn't appear")]
+    AnfFormNVariableTooBigFactor(usize, usize),
 }
 
 pub(crate) const XOR_DIFFERENT_VAR_COUNT_PANIC_MSG: &'static str =
