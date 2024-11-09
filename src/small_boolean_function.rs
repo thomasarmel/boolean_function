@@ -1,6 +1,6 @@
 use crate::anf_polynom::AnfPolynomial;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
-use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+use crate::boolean_function_error::{XOR_DIFFERENT_VAR_COUNT_PANIC_MSG, AND_DIFFERENT_VAR_COUNT_PANIC_MSG};
 use crate::iterator::{BooleanFunctionIterator, CloseBalancedFunctionIterator, SmallCloseBalancedFunctionIterator};
 use crate::utils::left_kernel_boolean;
 use crate::BooleanFunctionError::{TooBigTruthTableForVarCount, TooBigVariableCount};
@@ -9,7 +9,7 @@ use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
-use std::ops::{BitXor, BitXorAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -484,6 +484,33 @@ impl BitXor for SmallBooleanFunction {
     }
 }
 
+/// In-place AND operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitAndAssign for SmallBooleanFunction {
+    fn bitand_assign(&mut self, rhs: Self) {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if self.variables_count != rhs.variables_count {
+            panic!("{}", AND_DIFFERENT_VAR_COUNT_PANIC_MSG);
+        }
+        self.truth_table &= rhs.truth_table;
+    }
+}
+
+/// AND operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitAnd for SmallBooleanFunction {
+    type Output = Self;
+
+    fn bitand(mut self, rhs: Self) -> Self::Output {
+        self &= rhs;
+        self
+    }
+}
+
 /// NOT operator for Boolean functions.
 ///
 /// This is equivalent to the [crate::BooleanFunctionImpl::reverse] operation: it reverses each output of the Boolean function.
@@ -793,14 +820,14 @@ mod tests {
         assert!(boolean_function.is_err());
         assert_eq!(
             boolean_function.unwrap_err(),
-            crate::BooleanFunctionError::InvalidWalshValuesCount(7)
+            BooleanFunctionError::InvalidWalshValuesCount(7)
         );
 
         let boolean_function = SmallBooleanFunction::from_walsh_hadamard_values(&[0]);
         assert!(boolean_function.is_err());
         assert_eq!(
             boolean_function.unwrap_err(),
-            crate::BooleanFunctionError::InvalidWalshValuesCount(1)
+            BooleanFunctionError::InvalidWalshValuesCount(1)
         );
     }
 
@@ -813,6 +840,18 @@ mod tests {
         assert_eq!(boolean_function.get_truth_table_u64(), 0xb5);
         assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function3.get_truth_table_u64(), 0xb5);
+        assert_eq!(boolean_function3.variables_count(), 3);
+    }
+
+    #[test]
+    fn test_and() {
+        let mut boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let boolean_function2 = SmallBooleanFunction::from_truth_table(0xab, 3).unwrap();
+        let boolean_function3 = boolean_function & boolean_function2;
+        boolean_function &= boolean_function2;
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xa);
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(boolean_function3.get_truth_table_u64(), 0xa);
         assert_eq!(boolean_function3.variables_count(), 3);
     }
 

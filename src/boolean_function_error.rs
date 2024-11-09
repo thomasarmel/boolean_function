@@ -41,6 +41,9 @@ pub enum BooleanFunctionError {
 pub(crate) const XOR_DIFFERENT_VAR_COUNT_PANIC_MSG: &'static str =
     "XOR operation requires the same number of variables in both functions";
 
+pub(crate) const AND_DIFFERENT_VAR_COUNT_PANIC_MSG: &'static str =
+    "AND operation requires the same number of variables in both functions";
+
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 pub(crate) const TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG: &'static str =
     "Truth table is too big for variables count";

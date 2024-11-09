@@ -2,7 +2,7 @@ use crate::anf_polynom::AnfPolynomial;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
 use crate::boolean_function_error::TRUTH_TABLE_TOO_BIG_VAR_COUNT_PANIC_MSG;
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
-use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
+use crate::boolean_function_error::{XOR_DIFFERENT_VAR_COUNT_PANIC_MSG, AND_DIFFERENT_VAR_COUNT_PANIC_MSG};
 use crate::iterator::{BigCloseBalancedFunctionIterator, BooleanFunctionIterator, CloseBalancedFunctionIterator};
 use crate::utils::{fast_anf_transform_biguint, left_kernel_boolean};
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
@@ -10,7 +10,7 @@ use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
 use num_traits::{FromPrimitive, One, Zero};
-use std::ops::{BitXor, BitXorAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -461,6 +461,33 @@ impl BitXor for BigBooleanFunction {
     }
 }
 
+/// In-place AND operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitAndAssign for BigBooleanFunction {
+    fn bitand_assign(&mut self, rhs: Self) {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if self.variables_count != rhs.variables_count {
+            panic!("{}", AND_DIFFERENT_VAR_COUNT_PANIC_MSG);
+        }
+        self.truth_table &= rhs.truth_table;
+    }
+}
+
+/// AND operator for Boolean functions truth tables.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitAnd for BigBooleanFunction {
+    type Output = Self;
+
+    fn bitand(mut self, rhs: Self) -> Self::Output {
+        self &= rhs;
+        self
+    }
+}
+
 /// NOT operator for Boolean functions.
 ///
 /// This is equivalent to the [crate::BooleanFunctionImpl::reverse] operation: it reverses each output of the Boolean function.
@@ -907,6 +934,30 @@ mod tests {
             "a2d63e4513fed5c8624c32ec1fa815ad"
         );
         assert_eq!(boolean_function3.variables_count(), 7);
+    }
+
+    #[test]
+    fn test_and() {
+        let mut boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed", 16).unwrap(),
+            8,
+        );
+        let boolean_function2 = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("c870974094ead8a96a450b2ef33486b4e61a4c5e97816f7a7bae007d4c53fc7d", 16).unwrap(),
+            8,
+        );
+        let boolean_function3 = boolean_function.clone() & boolean_function2.clone();
+        boolean_function &= boolean_function2;
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"
+        );
+        assert_eq!(boolean_function.variables_count(), 8);
+        assert_eq!(
+            boolean_function3.printable_hex_truth_table(),
+            "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"
+        );
+        assert_eq!(boolean_function3.variables_count(), 8);
     }
 
     #[test]
