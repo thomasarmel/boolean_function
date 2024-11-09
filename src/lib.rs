@@ -954,6 +954,15 @@ impl BooleanFunction {
     }
 }
 
+/// Create Boolean Function from hex string truth table representation
+impl TryFrom<&str> for BooleanFunction {
+    type Error = BooleanFunctionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_hex_string_truth_table(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::BooleanFunctionError::InvalidWalshValuesCount;
@@ -1397,7 +1406,7 @@ mod tests {
     #[test]
     fn test_is_bent() {
         let boolean_function =
-            BooleanFunction::from_hex_string_truth_table("00000000").unwrap();
+            BooleanFunction::try_from("00000000").unwrap();
         assert!(!boolean_function.is_bent());
 
         let boolean_function =

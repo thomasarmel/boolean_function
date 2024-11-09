@@ -247,12 +247,18 @@ impl Display for AnfPolynomial {
     }
 }
 
+impl Into<BooleanFunction> for AnfPolynomial {
+    fn into(self) -> BooleanFunction {
+        self.to_boolean_function()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::anf_polynom::AnfPolynomial;
     use num_bigint::BigUint;
     use num_traits::{Num, One, Zero};
-    use crate::{BooleanFunctionError, BooleanFunctionImpl};
+    use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl};
 
     #[test]
     fn test_get_polynomial_small() {
@@ -390,6 +396,11 @@ mod tests {
         let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
         let rule_30_polynomial = AnfPolynomial::from_str(rule_30_anf_str, 3).unwrap();
         let rule_30_function = rule_30_polynomial.to_boolean_function();
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let rule_30_polynomial = AnfPolynomial::from_str(rule_30_anf_str, 3).unwrap();
+        let rule_30_function: BooleanFunction = rule_30_polynomial.into();
         assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
 
         let anf_str = "x0*x1*x2*x3*x4*x5*x6 + x7";
