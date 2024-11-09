@@ -1,11 +1,12 @@
 //! Algebraic Normal Form (ANF) representation of Boolean functions.
 
 #[cfg(not(feature = "unsafe_disable_safety_checks"))]
-use crate::boolean_function_error::POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG;
+use crate::boolean_function_error::{POLYNOMIAL_ANF_TOO_BIG_VAR_COUNT_PANIC_MSG, XOR_DIFFERENT_VAR_COUNT_PANIC_MSG};
 use itertools::Itertools;
 use num_bigint::BigUint;
-use num_traits::{One, Zero};
+use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use std::fmt::Display;
+use std::ops::{BitXor, BitXorAssign};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use crate::{BigBooleanFunction, BooleanFunction, BooleanFunctionError, SmallBooleanFunction};
 use crate::utils::fast_anf_transform_biguint;
@@ -149,7 +150,14 @@ impl AnfPolynomial {
             num_variables,
         };
 
+        if anf_polynomial.is_empty() {
+            return Ok(anf_polynomial_obj);
+        }
+
         for monomial_string in anf_polynomial_filtered.split('+') {
+            if monomial_string == "0" {
+                continue;
+            }
             if monomial_string == "1" {
                 anf_polynomial_obj.flip_bit_pos(0)?;
                 continue;
@@ -250,6 +258,52 @@ impl Display for AnfPolynomial {
 impl Into<BooleanFunction> for AnfPolynomial {
     fn into(self) -> BooleanFunction {
         self.to_boolean_function()
+    }
+}
+
+impl Into<String> for AnfPolynomial {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
+/// In-place XOR operator for Boolean functions ANF polynomial
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitXorAssign for AnfPolynomial {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if self.num_variables != rhs.num_variables {
+            panic!("{}", XOR_DIFFERENT_VAR_COUNT_PANIC_MSG);
+        }
+        match (&mut self.polynomial, rhs.polynomial) {
+            (PolynomialFormat::Small(self_poly), PolynomialFormat::Small(rhs_poly)) => {
+                *self_poly ^= rhs_poly;
+            },
+            (PolynomialFormat::Big(self_poly), PolynomialFormat::Small(rhs_poly)) => {
+                *self_poly ^= BigUint::from_u64(rhs_poly).unwrap();
+            },
+            (PolynomialFormat::Small(self_poly), PolynomialFormat::Big(rhs_poly)) => {
+                *self_poly ^= rhs_poly.to_u64().unwrap();
+            },
+            (PolynomialFormat::Big(self_poly), PolynomialFormat::Big(rhs_poly)) => {
+                *self_poly ^= rhs_poly;
+            },
+        }
+    }
+}
+
+/// XOR operator for Boolean functions ANF polynomial
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl BitXor for AnfPolynomial {
+    type Output = AnfPolynomial;
+
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self ^= rhs;
+        self
     }
 }
 
@@ -360,6 +414,11 @@ mod tests {
         assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x2");
         assert_eq!(anf_polynomial.get_boolean_function_type(), crate::BooleanFunctionType::Small);
 
+        let anf_str = "x2 + x0*x1 + x0 + 0 + 0";
+        let anf_polynomial = AnfPolynomial::from_str(anf_str, 3).unwrap();
+        assert_eq!(anf_polynomial.to_string(), "x0*x1 + x0 + x2");
+        assert_eq!(anf_polynomial.get_boolean_function_type(), crate::BooleanFunctionType::Small);
+
         let anf_str = "x0*x1 + x2 + x0 + 1";
         let anf_polynomial = AnfPolynomial::from_str(anf_str, 2);
         assert!(anf_polynomial.is_err());
@@ -389,6 +448,31 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_str(anf_str, 8);
         assert!(anf_polynomial.is_err());
         assert_eq!(anf_polynomial.unwrap_err(), BooleanFunctionError::ErrorParsingAnfString);
+
+        let anf_str = "";
+        let polynomial = AnfPolynomial::from_str(anf_str, 3).unwrap();
+        let boolean_function = polynomial.to_boolean_function();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00");
+
+        let anf_str = "0";
+        let polynomial = AnfPolynomial::from_str(anf_str, 3).unwrap();
+        let boolean_function = polynomial.to_boolean_function();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00");
+
+        let anf_str = "";
+        let polynomial = AnfPolynomial::from_str(anf_str, 7).unwrap();
+        let boolean_function = polynomial.to_boolean_function();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00000000000000000000000000000000");
+
+        let anf_str = "0";
+        let polynomial = AnfPolynomial::from_str(anf_str, 7).unwrap();
+        let boolean_function = polynomial.to_boolean_function();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "00000000000000000000000000000000");
+
+        let anf_str = "x0*x0";
+        let anf_polynomial = AnfPolynomial::from_str(anf_str, 3).unwrap();
+        assert_eq!(anf_polynomial.to_string(), "x0");
+        assert_eq!(anf_polynomial.get_boolean_function_type(), crate::BooleanFunctionType::Small);
     }
 
     #[test]
@@ -407,5 +491,22 @@ mod tests {
         let anf_polynomial = AnfPolynomial::from_str(anf_str, 8).unwrap();
         let boolean_function = anf_polynomial.to_boolean_function();
         assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
+    }
+
+    #[test]
+    fn test_xor() {
+        let anf_1 = AnfPolynomial::from_str("x0*x1*x4*x7 + x2*x3 + x1 + 0", 8).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x0*x1*x2*x4*x7 + x2*x3 + x3 + 1", 8).unwrap();
+        let anf_3 = anf_1.clone() ^ anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x0*x1*x2*x4*x7 + x0*x1*x4*x7 + x1 + x3 + 1");
+        anf_2 ^= anf_1;
+        assert_eq!(anf_2.to_string(), "x0*x1*x2*x4*x7 + x0*x1*x4*x7 + x1 + x3 + 1");
+
+        let anf_1 = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 8).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x0*x1*x2 + x0*x2 + x1*x0 + x1 + 1", 8).unwrap();
+        let anf_3 = anf_1.clone() ^ anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x0*x1*x2 + x0*x2 + x0 + x2 + 1");
+        anf_2 ^= anf_1;
+        assert_eq!(anf_2.to_string(), "x0*x1*x2 + x0*x2 + x0 + x2 + 1");
     }
 }
