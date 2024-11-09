@@ -9,7 +9,7 @@ use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanF
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
-use num_traits::{One, Zero};
+use num_traits::{FromPrimitive, One, Zero};
 use std::ops::{BitXor, BitXorAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
@@ -306,6 +306,41 @@ impl BigBooleanFunction {
 
         Ok(BigCloseBalancedFunctionIterator::create(self, flippable_positions, bits_to_flip_count))
     }
+
+    /// Computes BigBooleanFunction from string ANF representation
+    ///
+    /// The ANF string representation must be in exact form "`x0*x2*x3 + x2*x3 + x1 + 1`".
+    ///
+    /// X's index starts at 0, meaning the maximum index is variable count - 1.
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The string representation of the ANF form
+    /// - `num_variables`: Variable count of the polynomial
+    ///
+    /// # Returns
+    /// The BigBooleanFunction corresponding to the ANF string representation, or an error if the input string doesn't respect the format,
+    /// and `unsafe_disable_safety_checks` feature is not activated.
+    pub fn from_anf_polynomial_str_inner(anf_polynomial: &str, num_variables: usize) -> Result<Self, BooleanFunctionError> {
+        Ok(Self::from_anf_polynomial_inner(
+            &AnfPolynomial::from_str(anf_polynomial, num_variables)?
+        ))
+    }
+
+    /// Computes BigBooleanFunction from ANF polynomial
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The polynomial in Algebraic Normal Form
+    ///
+    /// # Returns
+    /// The BigBooleanFunction corresponding to the ANF polynomial
+    pub fn from_anf_polynomial_inner(anf_polynomial: &AnfPolynomial) -> Self {
+        match anf_polynomial.to_boolean_function() {
+            BooleanFunction::Small(small_bf) => BigBooleanFunction::from_truth_table(
+                BigUint::from_u64(small_bf.get_truth_table_u64()).unwrap(), small_bf.variables_count()
+            ),
+            BooleanFunction::Big(big_bf) => big_bf
+        }
+    }
 }
 impl BooleanFunctionImpl for BigBooleanFunction {
     #[inline]
@@ -335,7 +370,7 @@ impl BooleanFunctionImpl for BigBooleanFunction {
     }
 
     fn derivative(&self, direction: u32) -> Result<BooleanFunction, BooleanFunctionError> {
-        Ok((self.derivative_inner(direction)?).into())
+        Ok(self.derivative_inner(direction)?.into())
     }
 
     fn is_linear(&self) -> bool {
@@ -439,7 +474,7 @@ impl Not for BigBooleanFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BigBooleanFunction, BooleanFunctionImpl};
+    use crate::{AnfPolynomial, BigBooleanFunction, BooleanFunctionError, BooleanFunctionImpl};
     use num_bigint::BigUint;
     use num_traits::{Num, One, Zero};
 
@@ -973,5 +1008,33 @@ mod tests {
         for _ in 0..10 {
             assert!(close_balanced_iterator.next().unwrap().is_balanced());
         }
+    }
+
+    #[test]
+    fn test_from_anf_polynomial_str_inner() {
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let rule_30_function = BigBooleanFunction::from_anf_polynomial_str_inner(rule_30_anf_str, 3).unwrap();
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+
+        let anf_str = "x7*x6*x0*x1 + x0 + x1 + x2";
+        let boolean_function = BigBooleanFunction::from_anf_polynomial_str_inner(anf_str, 3);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::AnfFormNVariableTooBigFactor(3, 7));
+
+        let anf_str = "x7*x6*x0*x1 + x0 + x1 + x2";
+        let boolean_function = BigBooleanFunction::from_anf_polynomial_str_inner(anf_str, 8).unwrap();
+        assert_eq!(boolean_function.printable_hex_truth_table(), "1e1e1e1e1e1e1e1e969696969696969696969696969696969696969696969696");
+
+        let anf_str = "x0*y1 + x0 + x1 + x2";
+        let boolean_function = BigBooleanFunction::from_anf_polynomial_str_inner(anf_str, 3);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::ErrorParsingAnfString);
+    }
+
+    #[test]
+    fn test_from_anf_polynomial_inner() {
+        let anf = AnfPolynomial::from_str("x7*x6*x0*x1 + x0 + x1 + x2", 8).unwrap();
+        let boolean_function = BigBooleanFunction::from_anf_polynomial_inner(&anf);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "1e1e1e1e1e1e1e1e969696969696969696969696969696969696969696969696");
     }
 }

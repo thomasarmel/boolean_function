@@ -3,9 +3,7 @@ use crate::anf_polynom::AnfPolynomial;
 use crate::boolean_function_error::XOR_DIFFERENT_VAR_COUNT_PANIC_MSG;
 use crate::iterator::{BooleanFunctionIterator, CloseBalancedFunctionIterator, SmallCloseBalancedFunctionIterator};
 use crate::utils::left_kernel_boolean;
-#[cfg(not(feature = "unsafe_disable_safety_checks"))]
-use crate::BooleanFunctionError::TooBigTruthTableForVarCount;
-use crate::BooleanFunctionError::TooBigVariableCount;
+use crate::BooleanFunctionError::{TooBigTruthTableForVarCount, TooBigVariableCount};
 use crate::{BooleanFunction, BooleanFunctionError, BooleanFunctionImpl, BooleanFunctionType};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use itertools::{enumerate, Itertools};
@@ -327,6 +325,44 @@ impl SmallBooleanFunction {
 
         Ok(SmallCloseBalancedFunctionIterator::create(self, flippable_positions, bits_to_flip_count))
     }
+
+    /// Computes SmallBooleanFunction from string ANF representation
+    ///
+    /// The ANF string representation must be in exact form "`x0*x2*x3 + x2*x3 + x1 + 1`".
+    ///
+    /// X's index starts at 0, meaning the maximum index is variable count - 1.
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The string representation of the ANF form
+    /// - `num_variables`: Variable count of the polynomial
+    ///
+    /// # Returns
+    /// The SmallBooleanFunction corresponding to the ANF string representation, or an error if:
+    /// - the input string doesn't respect the format and `unsafe_disable_safety_checks` feature is not activated.
+    /// - the polynomial variable count is greater than 6
+    pub fn from_anf_polynomial_str_inner(anf_polynomial: &str, num_variables: usize) -> Result<Self, BooleanFunctionError> {
+        #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+        if num_variables > 6 {
+            return Err(TooBigTruthTableForVarCount);
+        }
+        Ok(Self::from_anf_polynomial_inner(
+            &AnfPolynomial::from_str(anf_polynomial, num_variables)?
+        )?)
+    }
+
+    /// Computes SmallBooleanFunction from ANF polynomial
+    ///
+    /// # Parameters:
+    /// - `anf_polynomial`: The polynomial in Algebraic Normal Form
+    ///
+    /// # Returns
+    /// The SmallBooleanFunction corresponding to the ANF polynomial, or an error if polynomial variable count > 6
+    pub fn from_anf_polynomial_inner(anf_polynomial: &AnfPolynomial) -> Result<Self, BooleanFunctionError> {
+        match anf_polynomial.to_boolean_function() {
+            BooleanFunction::Small(small_bf) => Ok(small_bf),
+            BooleanFunction::Big(_) => Err(TooBigTruthTableForVarCount)
+        }
+    }
 }
 
 impl BooleanFunctionImpl for SmallBooleanFunction {
@@ -461,7 +497,7 @@ impl Not for SmallBooleanFunction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BooleanFunctionImpl, SmallBooleanFunction};
+    use crate::{AnfPolynomial, BooleanFunctionError, BooleanFunctionImpl, SmallBooleanFunction};
 
     #[test]
     fn test_from_truth_table() {
@@ -861,5 +897,40 @@ mod tests {
 
         let mut close_balanced_iterator = bent_function.close_balanced_functions_iterator_inner().unwrap();
         assert!(close_balanced_iterator.all(|f| f.is_balanced()));
+    }
+
+    #[test]
+    fn test_from_anf_polynomial_str_inner() {
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let rule_30_function = SmallBooleanFunction::from_anf_polynomial_str_inner(rule_30_anf_str, 3).unwrap();
+        assert_eq!(rule_30_function.printable_hex_truth_table(), "1e");
+        assert_eq!(rule_30_function.get_truth_table_u64(), 30);
+
+        let rule_30_anf_str = "x0*x1 + x0 + x1 + x2";
+        let boolean_function = SmallBooleanFunction::from_anf_polynomial_str_inner(rule_30_anf_str, 8);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::TooBigTruthTableForVarCount);
+
+        let anf_str = "x0*x1*x3 + x0 + x1 + x2";
+        let boolean_function = SmallBooleanFunction::from_anf_polynomial_str_inner(anf_str, 3);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::AnfFormNVariableTooBigFactor(3, 3));
+
+        let anf_str = "x0*y1 + x0 + x1 + x2";
+        let boolean_function = SmallBooleanFunction::from_anf_polynomial_str_inner(anf_str, 3);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::ErrorParsingAnfString);
+    }
+
+    #[test]
+    fn test_from_anf_polynomial_inner() {
+        let rule_30_anf = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+        let rule_30_function = SmallBooleanFunction::from_anf_polynomial_inner(&rule_30_anf).unwrap();
+        assert_eq!(rule_30_function.get_truth_table_u64(), 30);
+
+        let rule_30_anf = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 7).unwrap();
+        let boolean_function = SmallBooleanFunction::from_anf_polynomial_inner(&rule_30_anf);
+        assert!(boolean_function.is_err());
+        assert_eq!(boolean_function.unwrap_err(), BooleanFunctionError::TooBigTruthTableForVarCount);
     }
 }

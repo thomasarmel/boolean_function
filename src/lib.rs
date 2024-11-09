@@ -954,8 +954,6 @@ impl BooleanFunction {
     }
 }
 
-// TODO from ANF in Small and Big Boolean functions
-
 #[cfg(test)]
 mod tests {
     use crate::BooleanFunctionError::InvalidWalshValuesCount;
