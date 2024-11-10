@@ -96,14 +96,15 @@ impl BigBooleanFunction {
     /// Computes the [annihilator](crate::BooleanFunctionImpl::annihilator) of the Boolean function for a given maximum degree.
     ///
     /// # Parameters
-    /// * `max_degree` - The maximum degree of the wished annihilator.
+    /// * `max_degree` - An optional maximum degree of the annihilator to search for. If set to `None`, the value is set to the variable count.
     ///
     /// # Returns
     /// A tuple containing the annihilator function, its degree and the dimension of the annihilator vector space, or `None` no annihilator was found.
     pub fn annihilator_inner(
         &self,
-        max_degree: usize,
+        max_degree: Option<usize>,
     ) -> Option<(BigBooleanFunction, usize, usize)> {
+        let max_degree = max_degree.unwrap_or(self.variables_count);
         if self.truth_table == BigUint::zero() {
             let max_possible_function_tt =
                 (BigUint::one() << (1 << self.variables_count)) - BigUint::one();
@@ -408,7 +409,7 @@ impl BooleanFunctionImpl for BigBooleanFunction {
         AnfPolynomial::from_anf_big(&anf_form, self.variables_count)
     }
 
-    fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
+    fn annihilator(&self, max_degree: Option<usize>) -> Option<(BooleanFunction, usize, usize)> {
         let annihilator = self.annihilator_inner(max_degree)?;
         Some(((annihilator.0).into(), annihilator.1, annihilator.2))
     }
@@ -745,7 +746,7 @@ mod tests {
             BigUint::from_str_radix("00000000000000000000000000000000", 16).unwrap(),
             7,
         );
-        let annihilator = boolean_function.annihilator_inner(0).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(0)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffffffffffffffffffff"
@@ -757,17 +758,24 @@ mod tests {
             BigUint::from_str_radix("ffffffffffffffffffffffffffffffff", 16).unwrap(),
             7,
         );
-        let annihilator = boolean_function.annihilator_inner(7);
+        let annihilator = boolean_function.annihilator_inner(Some(7));
+        assert!(annihilator.is_none());
+
+        let boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ffffffffffffffffffffffffffffffff", 16).unwrap(),
+            7,
+        );
+        let annihilator = boolean_function.annihilator_inner(None);
         assert!(annihilator.is_none());
 
         let boolean_function = BigBooleanFunction::from_truth_table(
             BigUint::from_str_radix("7969817CC5893BA6AC326E47619F5AD0", 16).unwrap(),
             7,
         );
-        let annihilator = boolean_function.annihilator_inner(2);
+        let annihilator = boolean_function.annihilator_inner(Some(2));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(3).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(3)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "80921c010276c440400810a80e200425"
@@ -775,7 +783,15 @@ mod tests {
         assert_eq!(annihilator.1, 3);
         assert_eq!(annihilator.2, 2);
 
-        let annihilator = boolean_function.annihilator_inner(7).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(7)).unwrap();
+        assert_eq!(
+            annihilator.0.printable_hex_truth_table(),
+            "80921c010276c440400810a80e200425"
+        );
+        assert_eq!(annihilator.1, 3);
+        assert_eq!(annihilator.2, 64);
+
+        let annihilator = boolean_function.annihilator_inner(None).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "80921c010276c440400810a80e200425"
@@ -787,10 +803,10 @@ mod tests {
             BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap(),
             7,
         );
-        let annihilator = boolean_function.annihilator_inner(1);
+        let annihilator = boolean_function.annihilator_inner(Some(1));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(2).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(2)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "22442244118811882244224411881188"
@@ -802,10 +818,10 @@ mod tests {
             BigUint::from_str_radix("0000000000000000ffffffffffffffff", 16).unwrap(),
             7,
         );
-        let annihilator = boolean_function.annihilator_inner(0);
+        let annihilator = boolean_function.annihilator_inner(Some(0));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(1).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(1)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffff0000000000000000"
@@ -813,7 +829,7 @@ mod tests {
         assert_eq!(annihilator.1, 1);
         assert_eq!(annihilator.2, 1);
 
-        let annihilator = boolean_function.annihilator_inner(4).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(4)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffff0000000000000000"
@@ -821,7 +837,15 @@ mod tests {
         assert_eq!(annihilator.1, 1);
         assert_eq!(annihilator.2, 42);
 
-        let annihilator = boolean_function.annihilator_inner(7).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(7)).unwrap();
+        assert_eq!(
+            annihilator.0.printable_hex_truth_table(),
+            "ffffffffffffffff0000000000000000"
+        );
+        assert_eq!(annihilator.1, 1);
+        assert_eq!(annihilator.2, 64);
+
+        let annihilator = boolean_function.annihilator_inner(None).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffff0000000000000000"
@@ -837,12 +861,12 @@ mod tests {
             .unwrap(),
             8,
         );
-        let annihilator = boolean_function.annihilator_inner(0);
+        let annihilator = boolean_function.annihilator_inner(Some(0));
         assert!(annihilator.is_none());
-        let annihilator = boolean_function.annihilator_inner(1);
+        let annihilator = boolean_function.annihilator_inner(Some(1));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(2).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(2)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188"
@@ -850,7 +874,7 @@ mod tests {
         assert_eq!(annihilator.1, 2);
         assert_eq!(annihilator.2, 2);
 
-        let annihilator = boolean_function.annihilator_inner(5).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(5)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188"
@@ -866,7 +890,7 @@ mod tests {
             .unwrap(),
             8,
         );
-        let annihilator = boolean_function.annihilator_inner(4);
+        let annihilator = boolean_function.annihilator_inner(Some(4));
         assert!(annihilator.is_none());
 
         let boolean_function = BigBooleanFunction::from_truth_table(
@@ -877,7 +901,7 @@ mod tests {
             .unwrap(),
             8,
         );
-        let annihilator = boolean_function.annihilator_inner(4).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(4)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

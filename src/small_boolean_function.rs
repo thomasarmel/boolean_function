@@ -110,14 +110,15 @@ impl SmallBooleanFunction {
     /// Computes the [annihilator](crate::BooleanFunctionImpl::annihilator) of the Boolean function for a given maximum degree.
     ///
     /// # Parameters
-    /// * `max_degree` - The maximum degree of the wished annihilator.
+    /// * `max_degree` - An optional maximum degree of the annihilator to search for. If set to `None`, the value is set to the variable count.
     ///
     /// # Returns
     /// A tuple containing the annihilator function, its degree and the dimension of the annihilator vector space, or `None` no annihilator was found.
     pub fn annihilator_inner(
         &self,
-        max_degree: usize,
+        max_degree: Option<usize>,
     ) -> Option<(SmallBooleanFunction, usize, usize)> {
+        let max_degree = max_degree.unwrap_or(self.variables_count);
         if self.truth_table == 0 {
             let max_possible_function_tt = u64::MAX >> (64 - (1 << self.variables_count));
             let dim_annihilator_vec_space = (0..=max_degree)
@@ -431,9 +432,9 @@ impl BooleanFunctionImpl for SmallBooleanFunction {
         AnfPolynomial::from_anf_small(anf_form, self.variables_count)
     }
 
-    fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)> {
+    fn annihilator(&self, max_degree: Option<usize>) -> Option<(BooleanFunction, usize, usize)> {
         let annihilator = self.annihilator_inner(max_degree)?;
-        Some(((annihilator.0).into(), annihilator.1, annihilator.2))
+        Some((annihilator.0.into(), annihilator.1, annihilator.2))
     }
 
     fn get_1_local_neighbor(&self, position: u32) -> BooleanFunction {
@@ -773,47 +774,57 @@ mod tests {
     #[test]
     fn test_annihilator_inner() {
         let boolean_function = SmallBooleanFunction::from_truth_table(0xaa55aa55, 5).unwrap();
-        let annihilator = boolean_function.annihilator_inner(1).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(1)).unwrap();
         assert_eq!(annihilator.0.get_truth_table_u64(), 0x55aa55aa);
         assert_eq!(annihilator.1, 1);
         assert_eq!(annihilator.2, 1);
 
-        let annihilator = boolean_function.annihilator_inner(6).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(6)).unwrap();
+        assert_eq!(annihilator.0.get_truth_table_u64(), 0x55aa55aa);
+        assert_eq!(annihilator.1, 1);
+        assert_eq!(annihilator.2, 16);
+
+        let annihilator = boolean_function.annihilator_inner(None).unwrap();
         assert_eq!(annihilator.0.get_truth_table_u64(), 0x55aa55aa);
         assert_eq!(annihilator.1, 1);
         assert_eq!(annihilator.2, 16);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
-        let annihilator = boolean_function.annihilator_inner(1);
+        let annihilator = boolean_function.annihilator_inner(Some(1));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(2).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(2)).unwrap();
         assert_eq!(annihilator.0.get_truth_table_u64(), 0xe1);
         assert_eq!(annihilator.1, 2);
         assert_eq!(annihilator.2, 3);
 
         let boolean_function = SmallBooleanFunction::from_truth_table(0, 4).unwrap();
-        let annihilator = boolean_function.annihilator_inner(0).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(0)).unwrap();
         assert_eq!(annihilator.0.get_truth_table_u64(), 0xffff);
         assert_eq!(annihilator.1, 0);
         assert_eq!(annihilator.2, 1);
 
-        let annihilator = boolean_function.annihilator_inner(3).unwrap();
+        let annihilator = boolean_function.annihilator_inner(Some(3)).unwrap();
         assert_eq!(annihilator.0.get_truth_table_u64(), 0xffff);
         assert_eq!(annihilator.1, 0);
         assert_eq!(annihilator.2, 15);
 
         let boolean_function =
             SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
-        let annihilator = boolean_function.annihilator_inner(6);
+        let annihilator = boolean_function.annihilator_inner(Some(6));
+        assert!(annihilator.is_none());
+
+        let boolean_function =
+            SmallBooleanFunction::from_truth_table(0xffffffffffffffff, 6).unwrap();
+        let annihilator = boolean_function.annihilator_inner(None);
         assert!(annihilator.is_none());
 
         let boolean_function =
             SmallBooleanFunction::from_truth_table(0xabcdef0123456789, 6).unwrap();
-        let annihilator = boolean_function.annihilator_inner(2);
+        let annihilator = boolean_function.annihilator_inner(Some(2));
         assert!(annihilator.is_none());
 
-        let annihilator = boolean_function.annihilator_inner(3);
+        let annihilator = boolean_function.annihilator_inner(Some(3));
         assert_eq!(
             annihilator.unwrap().0.get_truth_table_u64(),
             0x1010101010101010
@@ -821,7 +832,7 @@ mod tests {
         assert_eq!(annihilator.unwrap().1, 3);
         assert_eq!(annihilator.unwrap().2, 10);
 
-        let annihilator = boolean_function.annihilator_inner(4);
+        let annihilator = boolean_function.annihilator_inner(Some(4));
         assert_eq!(
             annihilator.unwrap().0.get_truth_table_u64(),
             0x1010101010101010
@@ -829,7 +840,7 @@ mod tests {
         assert_eq!(annihilator.unwrap().1, 3);
         assert_eq!(annihilator.unwrap().2, 25);
 
-        let annihilator = boolean_function.annihilator_inner(5);
+        let annihilator = boolean_function.annihilator_inner(Some(5));
         assert_eq!(
             annihilator.unwrap().0.get_truth_table_u64(),
             0x1010101010101010

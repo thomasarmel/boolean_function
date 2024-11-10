@@ -414,7 +414,7 @@ pub trait BooleanFunctionImpl: Debug {
     /// **Special case**: annihilator of zero function is constant one function, by convention.
     ///
     /// # Parameters
-    /// - `max_degree`: The maximum degree of the annihilator to search for.
+    /// - `max_degree`: An optional maximum degree of the annihilator to search for. If set to `None`, the value is set to the variable count.
     ///
     /// # Returns
     /// - `None` if no annihilator is found (this is the case for constant one function).
@@ -422,7 +422,7 @@ pub trait BooleanFunctionImpl: Debug {
     ///    - `annihilator`: The annihilator function.
     ///    - `degree`: The degree of the returned annihilator function.
     ///    - `dimension`: The dimension of the annihilator vector space.
-    fn annihilator(&self, max_degree: usize) -> Option<(BooleanFunction, usize, usize)>; // TODO max degree in Option
+    fn annihilator(&self, max_degree: Option<usize>) -> Option<(BooleanFunction, usize, usize)>;
 
     /// Returns the algebraic immunity of the Boolean function.
     ///
@@ -431,7 +431,7 @@ pub trait BooleanFunctionImpl: Debug {
     /// # Returns
     /// The algebraic immunity of the Boolean function, or 0 if the function has no annihilator.
     fn algebraic_immunity(&self) -> usize {
-        match self.annihilator(self.variables_count()) {
+        match self.annihilator(Some(self.variables_count())) {
             None => 0,
             Some(annihilator) => annihilator.1,
         }
@@ -1543,14 +1543,14 @@ mod tests {
     fn test_annihilator() {
         let boolean_function =
             BooleanFunction::from_hex_string_truth_table("00000000").unwrap();
-        let annihilator = boolean_function.annihilator(0).unwrap();
+        let annihilator = boolean_function.annihilator(Some(0)).unwrap();
         assert_eq!(annihilator.0.printable_hex_truth_table(), "ffffffff");
         assert_eq!(annihilator.1, 0);
         assert_eq!(annihilator.2, 1);
 
         let boolean_function =
             BooleanFunction::from_hex_string_truth_table("abcdef0123456789").unwrap();
-        let annihilator = boolean_function.annihilator(4).unwrap();
+        let annihilator = boolean_function.annihilator(Some(4)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "1010101010101010"
@@ -1562,14 +1562,14 @@ mod tests {
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         )
         .unwrap();
-        let annihilator = boolean_function.annihilator(4);
+        let annihilator = boolean_function.annihilator(Some(4));
         assert!(annihilator.is_none());
 
         let boolean_function = BooleanFunction::from_hex_string_truth_table(
             "0000000000000000000000000000000000000000000000000000000000000000",
         )
         .unwrap();
-        let annihilator = boolean_function.annihilator(4).unwrap();
+        let annihilator = boolean_function.annihilator(Some(4)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -1581,9 +1581,9 @@ mod tests {
             "80921c010276c44224422441188118822442244118811880400810a80e200425",
         )
         .unwrap();
-        let annihilator = boolean_function.annihilator(1);
+        let annihilator = boolean_function.annihilator(Some(1));
         assert!(annihilator.is_none());
-        let annihilator = boolean_function.annihilator(5).unwrap();
+        let annihilator = boolean_function.annihilator(Some(5)).unwrap();
         assert_eq!(
             annihilator.0.printable_hex_truth_table(),
             "2244224411881188d2b4d2b4e178e178d2b4d2b4e178e1782244224411881188"
