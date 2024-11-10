@@ -55,7 +55,7 @@ fn main() {
         "x0*x2 + x1*x2 + x1*x3 + x2*x3 + x2");
     
     // If your function has more than 6 variables, you can use BigBooleanFunction
-    // So that you will avoid runtime calls to the V-table
+    // So that you will avoid runtime enum checks
     const AES_COMP_TT: &'static str = "4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed";
     let f_big: BigBooleanFunction = BigBooleanFunction::from_truth_table(
         BigUint::from_str_radix(AES_COMP_TT, 16).unwrap(),
