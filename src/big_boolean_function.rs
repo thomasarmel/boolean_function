@@ -10,7 +10,7 @@ use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
 use num_traits::{FromPrimitive, One, Zero};
-use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, Not};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -461,6 +461,32 @@ impl BitXor for BigBooleanFunction {
     }
 }
 
+/// ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BigBooleanFunction::bitxor] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Add for BigBooleanFunction {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self ^ rhs
+    }
+}
+
+/// In-place ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BigBooleanFunction::bitxor_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl AddAssign for BigBooleanFunction {
+    fn add_assign(&mut self, rhs: Self) {
+        *self ^= rhs;
+    }
+}
+
 /// In-place AND operator for Boolean functions truth tables.
 ///
 /// # Panics
@@ -485,6 +511,31 @@ impl BitAnd for BigBooleanFunction {
     fn bitand(mut self, rhs: Self) -> Self::Output {
         self &= rhs;
         self
+    }
+}
+
+/// MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BigBooleanFunction::bitand] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Mul for BigBooleanFunction {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        self & rhs
+    }
+}
+
+/// In-place MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BigBooleanFunction::bitand_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl MulAssign for BigBooleanFunction {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self &= rhs;
     }
 }
 
@@ -937,6 +988,30 @@ mod tests {
     }
 
     #[test]
+    fn test_add() {
+        let mut boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("80921c010276c440400810a80e200425", 16).unwrap(),
+            7,
+        );
+        let boolean_function2 = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("22442244118811882244224411881188", 16).unwrap(),
+            7,
+        );
+        let boolean_function3 = boolean_function.clone() + boolean_function2.clone();
+        boolean_function += boolean_function2;
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "a2d63e4513fed5c8624c32ec1fa815ad"
+        );
+        assert_eq!(boolean_function.variables_count(), 7);
+        assert_eq!(
+            boolean_function3.printable_hex_truth_table(),
+            "a2d63e4513fed5c8624c32ec1fa815ad"
+        );
+        assert_eq!(boolean_function3.variables_count(), 7);
+    }
+
+    #[test]
     fn test_and() {
         let mut boolean_function = BigBooleanFunction::from_truth_table(
             BigUint::from_str_radix("4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed", 16).unwrap(),
@@ -948,6 +1023,30 @@ mod tests {
         );
         let boolean_function3 = boolean_function.clone() & boolean_function2.clone();
         boolean_function &= boolean_function2;
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"
+        );
+        assert_eq!(boolean_function.variables_count(), 8);
+        assert_eq!(
+            boolean_function3.printable_hex_truth_table(),
+            "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"
+        );
+        assert_eq!(boolean_function3.variables_count(), 8);
+    }
+
+    #[test]
+    fn test_mul() {
+        let mut boolean_function = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed", 16).unwrap(),
+            8,
+        );
+        let boolean_function2 = BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("c870974094ead8a96a450b2ef33486b4e61a4c5e97816f7a7bae007d4c53fc7d", 16).unwrap(),
+            8,
+        );
+        let boolean_function3 = boolean_function.clone() * boolean_function2.clone();
+        boolean_function *= boolean_function2;
         assert_eq!(
             boolean_function.printable_hex_truth_table(),
             "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"

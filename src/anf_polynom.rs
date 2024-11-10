@@ -6,7 +6,7 @@ use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use std::fmt::Display;
-use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign};
 use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use crate::{BigBooleanFunction, BooleanFunction, BooleanFunctionError, SmallBooleanFunction};
 use crate::utils::fast_anf_transform_biguint;
@@ -307,6 +307,31 @@ impl BitXor for AnfPolynomial {
     }
 }
 
+/// ADD operator for Boolean functions ANF polynomial.
+///
+/// It is equivalent to [crate::AnfPolynomial::bitxor] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Add for AnfPolynomial {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        self ^ rhs
+    }
+}
+
+/// In-place ADD operator for Boolean functions ANF polynomial.
+///
+/// It is equivalent to [crate::AnfPolynomial::bitxor_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl AddAssign for AnfPolynomial {
+    fn add_assign(&mut self, rhs: Self) {
+        *self ^= rhs;
+    }
+}
+
 /// In-place AND operator for Boolean functions ANF polynomial
 ///
 /// # Panics
@@ -388,6 +413,31 @@ impl BitAnd for AnfPolynomial {
             polynomial: new_polynomial,
             num_variables: self.num_variables
         }
+    }
+}
+
+/// MUL operator for Boolean functions ANF polynomial.
+///
+/// It is equivalent to [crate::AnfPolynomial::bitand] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Mul for AnfPolynomial {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        self & rhs
+    }
+}
+
+/// In-place MUL operator for Boolean functions ANF polynomial.
+///
+/// It is equivalent to [crate::AnfPolynomial::bitand_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl MulAssign for AnfPolynomial {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self &= rhs;
     }
 }
 
@@ -595,6 +645,23 @@ mod tests {
     }
 
     #[test]
+    fn test_add() {
+        let anf_1 = AnfPolynomial::from_str("x0*x1*x4*x7 + x2*x3 + x1 + 0", 8).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x0*x1*x2*x4*x7 + x2*x3 + x3 + 1", 8).unwrap();
+        let anf_3 = anf_1.clone() + anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x0*x1*x2*x4*x7 + x0*x1*x4*x7 + x1 + x3 + 1");
+        anf_2 += anf_1;
+        assert_eq!(anf_2.to_string(), "x0*x1*x2*x4*x7 + x0*x1*x4*x7 + x1 + x3 + 1");
+
+        let anf_1 = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x0*x1*x2 + x0*x2 + x1*x0 + x1 + 1", 3).unwrap();
+        let anf_3 = anf_1.clone() + anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x0*x1*x2 + x0*x2 + x0 + x2 + 1");
+        anf_2 += anf_1;
+        assert_eq!(anf_2.to_string(), "x0*x1*x2 + x0*x2 + x0 + x2 + 1");
+    }
+
+    #[test]
     fn test_and() {
         let anf_1 = AnfPolynomial::from_str("x0*x1", 3).unwrap();
         let mut anf_2 = AnfPolynomial::from_str("x0*x2", 3).unwrap();
@@ -686,5 +753,22 @@ mod tests {
         assert_eq!(anf_3.to_string(), "x5*x6*x7 + x4*x5 + x4*x6 + x3*x7 + x3 + x6 + x7 + 1");
         anf_2 &= anf_1;
         assert_eq!(anf_2.to_string(), "x5*x6*x7 + x4*x5 + x4*x6 + x3*x7 + x3 + x6 + x7 + 1");
+    }
+
+    #[test]
+    fn test_mul() {
+        let anf_1 = AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x0*x1 + x0*x1*x2 + x1 + 1", 3).unwrap();
+        let anf_3 = anf_1.clone() * anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x0*x1*x2 + x1*x2 + x0 + x2");
+        anf_2 *= anf_1;
+        assert_eq!(anf_2.to_string(), "x0*x1*x2 + x1*x2 + x0 + x2");
+
+        let anf_1 = AnfPolynomial::from_str("x3*x7 + x3 + x4*x5 + x4*x6 + x5*x6*x7 + x6 + x7 + 1", 8).unwrap();
+        let mut anf_2 = AnfPolynomial::from_str("x3*x5*x6*x7 + x3*x6*x7 + x3*x6 + x3*x7 + x3 + x4*x5*x6 + x4*x5*x7 + x4*x7 + x4 + x6*x7 + x6 + x7 + 1", 8).unwrap();
+        let anf_3 = anf_1.clone() * anf_2.clone();
+        assert_eq!(anf_3.to_string(), "x3*x4*x5*x7 + x3*x4*x5 + x4*x5*x6 + x3*x4*x7 + x4*x5*x7 + x3*x6*x7 + x3*x4 + x3*x6 + x3*x7 + x4*x7 + x6*x7 + x3 + x4 + x6 + x7 + 1");
+        anf_2 *= anf_1;
+        assert_eq!(anf_2.to_string(), "x3*x4*x5*x7 + x3*x4*x5 + x4*x5*x6 + x3*x4*x7 + x4*x5*x7 + x3*x6*x7 + x3*x4 + x3*x6 + x3*x7 + x4*x7 + x6*x7 + x3 + x4 + x6 + x7 + 1");
     }
 }

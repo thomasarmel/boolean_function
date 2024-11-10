@@ -32,7 +32,7 @@ use num_traits::{Num, ToPrimitive};
 pub use small_boolean_function::SmallBooleanFunction;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, Not};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
 use crate::iterator::CloseBalancedFunctionIterator;
 
 /// Internal representation of Boolean function
@@ -691,8 +691,6 @@ pub trait BooleanFunctionImpl: Debug {
     /// assert_eq!(highly_nonlinear_balanced_function.nonlinearity(), 112);
     /// ```
     fn close_balanced_functions_iterator(&self) -> Result<CloseBalancedFunctionIterator, BooleanFunctionError>;
-
-    // TODO, mul (and tt)
 }
 
 /// This type is used to store a boolean function with any number of variables.
@@ -765,6 +763,32 @@ impl BitXor for BooleanFunction {
     }
 }
 
+/// ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BooleanFunction::bitxor] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Add for BooleanFunction {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self ^ rhs
+    }
+}
+
+/// In-place ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BooleanFunction::bitxor_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl AddAssign for BooleanFunction {
+    fn add_assign(&mut self, rhs: Self) {
+        *self ^= rhs;
+    }
+}
+
 /// In-place AND operator for Boolean functions truth tables.
 ///
 /// # Panics
@@ -818,6 +842,31 @@ impl BitAnd for BooleanFunction {
     fn bitand(mut self, rhs: Self) -> Self::Output {
         self &= rhs;
         self
+    }
+}
+
+/// MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BooleanFunction::bitand] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Mul for BooleanFunction {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        self & rhs
+    }
+}
+
+/// In-place MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::BooleanFunction::bitand_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl MulAssign for BooleanFunction {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self &= rhs;
     }
 }
 
@@ -2019,6 +2068,96 @@ mod tests {
     }
 
     #[test]
+    fn test_add() {
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("80921c010276c440400810a80e200425")
+                .unwrap();
+        let boolean_function2 =
+            BooleanFunction::from_hex_string_truth_table("22442244118811882244224411881188")
+                .unwrap();
+        let boolean_function3 = boolean_function.clone() + boolean_function2.clone();
+        boolean_function += boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "a2d63e4513fed5c8624c32ec1fa815ad"
+        );
+        assert_eq!(boolean_function.variables_count(), 7);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function2 = BooleanFunction::from_hex_string_truth_table("ab").unwrap();
+        let boolean_function3 = boolean_function.clone() + boolean_function2.clone();
+        boolean_function += boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function2: BooleanFunction = super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ).into();
+        let boolean_function3 = boolean_function.clone() + boolean_function2.clone();
+        boolean_function += boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+
+        let mut boolean_function: BooleanFunction = super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ).into();
+        let boolean_function2 = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function3 = boolean_function.clone() + boolean_function2.clone();
+        boolean_function += boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "b5");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+    }
+
+    #[test]
     fn test_and() {
         let mut boolean_function =
             BooleanFunction::from_hex_string_truth_table("4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed")
@@ -2091,6 +2230,96 @@ mod tests {
         let boolean_function2 = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
         let boolean_function3 = boolean_function.clone() & boolean_function2.clone();
         boolean_function &= boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "0a");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+    }
+
+    #[test]
+    fn test_mul() {
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("4f1ead396f247a0410bdb210c006eab568ab4bfa8acb7a13b14ede67096c6eed")
+                .unwrap();
+        let boolean_function2 =
+            BooleanFunction::from_hex_string_truth_table("c870974094ead8a96a450b2ef33486b4e61a4c5e97816f7a7bae007d4c53fc7d")
+                .unwrap();
+        let boolean_function3 = boolean_function.clone() & boolean_function2.clone();
+        boolean_function &= boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(
+            boolean_function.printable_hex_truth_table(),
+            "481085000420580000050200c00482b4600a485a82816a12310e006508406c6d"
+        );
+        assert_eq!(boolean_function.variables_count(), 8);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function2 = BooleanFunction::from_hex_string_truth_table("ab").unwrap();
+        let boolean_function3 = boolean_function.clone() * boolean_function2.clone();
+        boolean_function *= boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "0a");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+
+        let mut boolean_function =
+            BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function2: BooleanFunction = super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ).into();
+        let boolean_function3 = boolean_function.clone() * boolean_function2.clone();
+        boolean_function *= boolean_function2.clone();
+        assert_eq!(&boolean_function, &boolean_function3);
+        assert_eq!(boolean_function.printable_hex_truth_table(), "0a");
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(
+            boolean_function.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+        assert_eq!(
+            boolean_function2.get_boolean_function_type(),
+            BooleanFunctionType::Big
+        );
+        assert_eq!(
+            boolean_function3.get_boolean_function_type(),
+            BooleanFunctionType::Small
+        );
+
+        let mut boolean_function: BooleanFunction = super::BigBooleanFunction::from_truth_table(
+            BigUint::from_str_radix("ab", 16).unwrap(),
+            3,
+        ).into();
+        let boolean_function2 = BooleanFunction::from_hex_string_truth_table("1e").unwrap();
+        let boolean_function3 = boolean_function.clone() * boolean_function2.clone();
+        boolean_function *= boolean_function2.clone();
         assert_eq!(&boolean_function, &boolean_function3);
         assert_eq!(boolean_function.printable_hex_truth_table(), "0a");
         assert_eq!(boolean_function.variables_count(), 3);

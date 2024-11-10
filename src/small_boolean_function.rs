@@ -9,7 +9,7 @@ use fast_boolean_anf_transform::fast_bool_anf_transform_unsigned;
 use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
-use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, Not};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -484,6 +484,31 @@ impl BitXor for SmallBooleanFunction {
     }
 }
 
+/// ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::SmallBooleanFunction::bitxor] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Add for SmallBooleanFunction {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        self ^ rhs
+    }
+}
+
+/// In-place ADD operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::SmallBooleanFunction::bitxor_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl AddAssign for SmallBooleanFunction {
+    fn add_assign(&mut self, rhs: Self) {
+        *self ^= rhs;
+    }
+}
+
 /// In-place AND operator for Boolean functions truth tables.
 ///
 /// # Panics
@@ -508,6 +533,31 @@ impl BitAnd for SmallBooleanFunction {
     fn bitand(mut self, rhs: Self) -> Self::Output {
         self &= rhs;
         self
+    }
+}
+
+/// MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::SmallBooleanFunction::bitand] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl Mul for SmallBooleanFunction {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        self & rhs
+    }
+}
+
+/// In-place MUL operator for Boolean functions truth tables.
+///
+/// It is equivalent to [crate::SmallBooleanFunction::bitand_assign] operator.
+///
+/// # Panics
+/// If the Boolean functions have different number of variables, and the `unsafe_disable_safety_checks` feature is not enabled.
+impl MulAssign for SmallBooleanFunction {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self &= rhs;
     }
 }
 
@@ -844,11 +894,35 @@ mod tests {
     }
 
     #[test]
+    fn test_add() {
+        let mut boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let boolean_function2 = SmallBooleanFunction::from_truth_table(0xab, 3).unwrap();
+        let boolean_function3 = boolean_function + boolean_function2;
+        boolean_function += boolean_function2;
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xb5);
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(boolean_function3.get_truth_table_u64(), 0xb5);
+        assert_eq!(boolean_function3.variables_count(), 3);
+    }
+
+    #[test]
     fn test_and() {
         let mut boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
         let boolean_function2 = SmallBooleanFunction::from_truth_table(0xab, 3).unwrap();
         let boolean_function3 = boolean_function & boolean_function2;
         boolean_function &= boolean_function2;
+        assert_eq!(boolean_function.get_truth_table_u64(), 0xa);
+        assert_eq!(boolean_function.variables_count(), 3);
+        assert_eq!(boolean_function3.get_truth_table_u64(), 0xa);
+        assert_eq!(boolean_function3.variables_count(), 3);
+    }
+
+    #[test]
+    fn test_mul() {
+        let mut boolean_function = SmallBooleanFunction::from_truth_table(0x1e, 3).unwrap();
+        let boolean_function2 = SmallBooleanFunction::from_truth_table(0xab, 3).unwrap();
+        let boolean_function3 = boolean_function * boolean_function2;
+        boolean_function *= boolean_function2;
         assert_eq!(boolean_function.get_truth_table_u64(), 0xa);
         assert_eq!(boolean_function.variables_count(), 3);
         assert_eq!(boolean_function3.get_truth_table_u64(), 0xa);
