@@ -1,0 +1,9 @@
+[package]
+name = "highly_nonlinear_balanced_finder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rayon = "1.10.0"
+boolean_function = {path = "../..", features = ["unsafe_disable_safety_checks"]}
+num-bigint = "0.4.6"
