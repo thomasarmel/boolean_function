@@ -69,7 +69,7 @@ fn main() {
 ```
 
 As you can see, this library provides 3 types of Boolean functions:
-- `BooleanFunction`: for Boolean functions with an arbitrary number of variables (up to 31). This is a wrapper for `Box<dyn BooleanFunctionImpl>`.
+- `BooleanFunction`: for Boolean functions with an arbitrary number of variables (up to 31). This is an enum between `SmallBooleanFunction` and `BigBooleanFunction`.
 - `SmallBooleanFunction`: for Boolean functions with up to 6 variables. Internally, the truth table is stored as a `u64`.
 - `BigBooleanFunction`: for Boolean functions with more than 6 variables. Internally, the truth table is stored as a `BigUint`.
 
