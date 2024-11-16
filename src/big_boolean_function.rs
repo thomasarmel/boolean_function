@@ -11,6 +11,7 @@ use num_bigint::BigUint;
 use num_integer::binomial;
 use num_traits::{FromPrimitive, One, Zero};
 use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
+use hackfn::hackfn;
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -551,6 +552,13 @@ impl Not for BigBooleanFunction {
     }
 }
 
+#[hackfn]
+impl BigBooleanFunction {
+    fn call(&self, input_bits: u32) -> bool {
+        self.compute_cellular_automata_rule(input_bits)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{AnfPolynomial, BigBooleanFunction, BooleanFunctionError, BooleanFunctionImpl};
@@ -592,6 +600,12 @@ mod tests {
         assert_eq!(boolean_function.compute_cellular_automata_rule(64), false);
         assert_eq!(boolean_function.compute_cellular_automata_rule(80), true);
         assert_eq!(boolean_function.compute_cellular_automata_rule(100), true);
+
+        assert_eq!(boolean_function(13), false);
+        assert_eq!(boolean_function(62), false);
+        assert_eq!(boolean_function(64), false);
+        assert_eq!(boolean_function(80), true);
+        assert_eq!(boolean_function(100), true);
     }
 
     #[test]

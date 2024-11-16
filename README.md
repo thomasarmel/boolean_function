@@ -38,6 +38,9 @@ fn main() {
     
     // How many variables does the function have?
     assert_eq!(f.variables_count(), 6);
+    
+    // Compute Boolean function for a given input value
+    assert_eq!(f(8), false);
 
     // Check if the function is bent
     assert!(f.is_bent());

@@ -10,6 +10,7 @@ use itertools::{enumerate, Itertools};
 use num_bigint::BigUint;
 use num_integer::binomial;
 use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
+use hackfn::hackfn;
 
 /// Struct representing a boolean function with a big truth table.
 ///
@@ -22,7 +23,7 @@ pub struct SmallBooleanFunction {
     truth_table: u64,
 }
 
-impl SmallBooleanFunction {
+impl SmallBooleanFunction {    
     /// Creates a new [SmallBooleanFunction] from a truth table and the number of variables.
     ///
     /// # Parameters
@@ -573,6 +574,13 @@ impl Not for SmallBooleanFunction {
     }
 }
 
+#[hackfn]
+impl SmallBooleanFunction {
+    fn call(&self, input_bits: u32) -> bool {
+        self.compute_cellular_automata_rule(input_bits)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{AnfPolynomial, BooleanFunctionError, BooleanFunctionImpl, SmallBooleanFunction};
@@ -615,6 +623,12 @@ mod tests {
         assert_eq!(boolean_function.compute_cellular_automata_rule(4), true);
         assert_eq!(boolean_function.compute_cellular_automata_rule(8), false);
         assert_eq!(boolean_function.compute_cellular_automata_rule(23), true);
+
+        assert_eq!(boolean_function(0), false);
+        assert_eq!(boolean_function(1), false);
+        assert_eq!(boolean_function(4), true);
+        assert_eq!(boolean_function(8), false);
+        assert_eq!(boolean_function(23), true);
     }
 
     #[test]

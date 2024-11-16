@@ -33,6 +33,7 @@ pub use small_boolean_function::SmallBooleanFunction;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitXor, BitXorAssign, Mul, MulAssign, Not};
+use hackfn::hackfn;
 use crate::iterator::CloseBalancedFunctionIterator;
 
 /// Internal representation of Boolean function
@@ -72,6 +73,8 @@ pub trait BooleanFunctionImpl: Debug {
 
     /// Computes the value of the Boolean function for a given input, as a 32-bit unsigned integer.
     ///
+    /// This is equivalent of calling directly your Boolean function object as a function.
+    ///
     /// # Parameters
     /// - `input_bits`: The input value for which to compute the Boolean function value, the least significant bit being the first variable.
     ///
@@ -80,6 +83,16 @@ pub trait BooleanFunctionImpl: Debug {
     ///
     /// # Panics
     /// If the input value is greater than the maximum input value, and the `unsafe_disable_safety_checks` feature is not enabled.
+    ///
+    /// # Example
+    /// ```rust
+    /// use boolean_function::BooleanFunction;
+    /// use boolean_function::BooleanFunctionImpl;
+    ///
+    /// let boolean_function = BooleanFunction::from_hex_string_truth_table("abce1234").unwrap();
+    /// assert_eq!(boolean_function.compute_cellular_automata_rule(8), false);
+    /// assert_eq!(boolean_function(8), false); // directly as a function
+    /// ```
     fn compute_cellular_automata_rule(&self, input_bits: u32) -> bool;
 
     /// Computes the Walsh-Hadamard transform of the Boolean function for a given point.
@@ -890,6 +903,13 @@ impl TryFrom<&str> for BooleanFunction {
     }
 }
 
+#[hackfn]
+impl BooleanFunction {
+    fn call(&self, input_bits: u32) -> bool {
+        self.compute_cellular_automata_rule(input_bits)
+    }
+}
+
 impl BooleanFunction {
     /// Creates a new BooleanFunction from a hexadecimal string representing the truth table.
     ///
@@ -1168,6 +1188,12 @@ mod tests {
         assert_eq!(boolean_function.compute_cellular_automata_rule(8), false);
         assert_eq!(boolean_function.compute_cellular_automata_rule(23), true);
 
+        assert_eq!(boolean_function(0), false);
+        assert_eq!(boolean_function(1), false);
+        assert_eq!(boolean_function(4), true);
+        assert_eq!(boolean_function(8), false);
+        assert_eq!(boolean_function(23), true);
+
         let boolean_function =
             BooleanFunction::from_hex_string_truth_table("7969817CC5893BA6AC326E47619F5AD0")
                 .unwrap();
@@ -1176,6 +1202,12 @@ mod tests {
         assert_eq!(boolean_function.compute_cellular_automata_rule(64), false);
         assert_eq!(boolean_function.compute_cellular_automata_rule(80), true);
         assert_eq!(boolean_function.compute_cellular_automata_rule(100), true);
+
+        assert_eq!(boolean_function(13), false);
+        assert_eq!(boolean_function(62), false);
+        assert_eq!(boolean_function(64), false);
+        assert_eq!(boolean_function(80), true);
+        assert_eq!(boolean_function(100), true);
     }
 
     #[test]
