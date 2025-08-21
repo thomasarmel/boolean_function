@@ -212,10 +212,35 @@ pub trait BooleanFunctionImpl: Debug {
     ///
     /// # Returns
     /// A vector containing the Walsh-Fourier values for all points.
+    #[deprecated(note = "Use `fast_walsh_fourier_values` instead")]
     fn walsh_fourier_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_fourier_transform(w))
             .collect()
+    }
+
+    /// Computes the Walsh-Fourier values for all points using fast Fourier transform.
+    ///
+    /// # Returns
+    /// A vector containing the Walsh-Fourier values for all points.
+    fn fast_walsh_fourier_values(&self) -> Vec<i32> {
+        let mut values = vec![0; (self.get_max_input_value() + 1) as usize];
+        for i in 0..=self.get_max_input_value() {
+            values[i as usize] = self.compute_cellular_automata_rule(i) as i32;
+        }
+        let mut h = 1usize;
+        while h <= self.get_max_input_value() as usize {
+            for i in (0..=self.get_max_input_value() as usize).step_by(h * 2) {
+                for j in 0..h {
+                    let a = values[i + j];
+                    let b = values[i + j + h];
+                    values[i + j] = a + b;
+                    values[i + j + h] = a - b;
+                }
+            }
+            h *= 2;
+        }
+        values
     }
 
     /// Computes the autocorrelation transform of the Boolean function for a given point.
@@ -2404,6 +2429,45 @@ mod tests {
         let boolean_function = BooleanFunction::from_hex_string_truth_table("8001").unwrap();
         assert_eq!(
             boolean_function.walsh_fourier_values(),
+            [2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]
+        );
+    }
+
+    #[test]
+    fn test_fast_walsh_fourier_values() {
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ff").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
+            [8, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("00").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("0f").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
+            [4, 0, 0, 0, 4, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("55").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
+            [4, 4, 0, 0, 0, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("aa").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
+            [4, -4, 0, 0, 0, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("8001").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_fourier_values(),
             [2, 0, 0, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2]
         );
     }
