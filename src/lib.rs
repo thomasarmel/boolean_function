@@ -154,11 +154,7 @@ pub trait BooleanFunctionImpl: Debug {
     fn fast_walsh_hadamard_values(&self) -> Vec<i32> {
         let mut values = vec![0; (self.get_max_input_value() + 1) as usize];
         for i in 0..=self.get_max_input_value() {
-            values[i as usize] = if self.compute_cellular_automata_rule(i) {
-                -1
-            } else {
-                1
-            };
+            values[i as usize] = 1 | -((self.compute_cellular_automata_rule(i)) as i32);
         }
         let mut h = 1usize;
         while h <= self.get_max_input_value() as usize {
