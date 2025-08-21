@@ -210,18 +210,10 @@ impl SmallBooleanFunction {
             return Err(TooBigVariableCount(6));
         }
         let mut truth_table = 0u64;
+        let mut inverse_walsh_transform = Vec::from(walsh_values);
+        crate::utils::fast_walsh_transform(&mut inverse_walsh_transform);
         for i in 0..(1 << num_variables) {
-            let value = walsh_values
-                .iter()
-                .enumerate()
-                .map(|(w, walsh_value)| {
-                    walsh_value * (if (w & i).count_ones() & 1 == 0 { 1 } else { -1 })
-                })
-                .sum::<i32>()
-                < 0;
-            if value {
-                truth_table |= 1 << i;
-            }
+            truth_table |= ((inverse_walsh_transform[i] < 0) as u64) << i;
         }
         Ok(Self {
             variables_count: num_variables,
@@ -251,18 +243,10 @@ impl SmallBooleanFunction {
             return Err(TooBigVariableCount(6));
         }
         let mut truth_table = 0u64;
+        let mut inverse_walsh_transform = Vec::from(walsh_values);
+        crate::utils::fast_walsh_transform(&mut inverse_walsh_transform);
         for i in 0..(1 << num_variables) {
-            let value = walsh_values
-                .iter()
-                .enumerate()
-                .map(|(w, walsh_value)| {
-                    walsh_value * (if (w & i).count_ones() & 1 == 0 { 1 } else { -1 })
-                })
-                .sum::<i32>()
-                != 0;
-            if value {
-                truth_table |= 1 << i;
-            }
+            truth_table |= ((inverse_walsh_transform[i] >> num_variables) as u64) << i;
         }
         Ok(Self {
             variables_count: num_variables,

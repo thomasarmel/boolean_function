@@ -197,18 +197,10 @@ impl BigBooleanFunction {
         }
         let num_variables = walsh_values_count.trailing_zeros() as usize;
         let mut truth_table = BigUint::zero();
+        let mut inverse_walsh_transform = Vec::from(walsh_values);
+        crate::utils::fast_walsh_transform(&mut inverse_walsh_transform);
         for i in 0..(1 << num_variables) {
-            let value = walsh_values
-                .iter()
-                .enumerate()
-                .map(|(w, walsh_value)| {
-                    walsh_value * (if (w & i).count_ones() & 1 == 0 { 1 } else { -1 })
-                })
-                .sum::<i32>()
-                < 0;
-            if value {
-                truth_table.set_bit(i as u64, true);
-            }
+            truth_table.set_bit(i as u64, inverse_walsh_transform[i] < 0);
         }
         Ok(Self {
             variables_count: num_variables,
@@ -232,18 +224,10 @@ impl BigBooleanFunction {
         }
         let num_variables = walsh_values_count.trailing_zeros() as usize;
         let mut truth_table = BigUint::zero();
+        let mut inverse_walsh_transform = Vec::from(walsh_values);
+        crate::utils::fast_walsh_transform(&mut inverse_walsh_transform);
         for i in 0..(1 << num_variables) {
-            let value = walsh_values
-                .iter()
-                .enumerate()
-                .map(|(w, walsh_value)| {
-                    walsh_value * (if (w & i).count_ones() & 1 == 0 { 1 } else { -1 })
-                })
-                .sum::<i32>()
-                != 0;
-            if value {
-                truth_table.set_bit(i as u64, true);
-            }
+            truth_table.set_bit(i as u64, inverse_walsh_transform[i] != 0);
         }
         Ok(Self {
             variables_count: num_variables,
