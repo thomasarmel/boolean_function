@@ -140,10 +140,39 @@ pub trait BooleanFunctionImpl: Debug {
     ///
     /// # Returns
     /// A vector containing the Walsh-Hadamard values for all points.
+    #[deprecated(note = "Use `fast_walsh_hadamard_values` instead")]
     fn walsh_hadamard_values(&self) -> Vec<i32> {
         (0..=self.get_max_input_value())
             .map(|w| self.walsh_hadamard_transform(w))
             .collect()
+    }
+
+    /// Computes the Walsh-Hadamard values for all points using fast Fourier transform.
+    ///
+    /// # Returns
+    /// A vector containing the Walsh-Hadamard values for all points.
+    fn fast_walsh_hadamard_values(&self) -> Vec<i32> {
+        let mut values = vec![0; (self.get_max_input_value() + 1) as usize];
+        for i in 0..=self.get_max_input_value() {
+            values[i as usize] = if self.compute_cellular_automata_rule(i) {
+                -1
+            } else {
+                1
+            };
+        }
+        let mut h = 1usize;
+        while h <= self.get_max_input_value() as usize {
+            for i in (0..=self.get_max_input_value() as usize).step_by(h * 2) {
+                for j in 0..h {
+                    let a = values[i + j];
+                    let b = values[i + j + h];
+                    values[i + j] = a + b;
+                    values[i + j + h] = a - b;
+                }
+            }
+            h *= 2;
+        }
+        values
     }
 
     /// Computes the absolute Walsh-Hadamard spectrum of the Boolean function.
@@ -1853,6 +1882,27 @@ mod tests {
         let boolean_function = BooleanFunction::from_hex_string_truth_table("ffff").unwrap();
         assert_eq!(
             boolean_function.walsh_hadamard_values(),
+            [-16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn test_fast_walsh_hadamard_values() {
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("dd0e").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_hadamard_values(),
+            [-2, -2, 6, -2, -6, 2, 2, 2, 6, 6, -2, 6, -6, 2, 2, 2]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("0000").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_hadamard_values(),
+            [16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ffff").unwrap();
+        assert_eq!(
+            boolean_function.fast_walsh_hadamard_values(),
             [-16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         );
     }
