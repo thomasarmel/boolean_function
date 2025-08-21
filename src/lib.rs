@@ -157,8 +157,9 @@ pub trait BooleanFunctionImpl: Debug {
     /// A hashmap containing the absolute Walsh-Hadamard values as keys, and the number of occurrences as values.
     fn absolute_walsh_hadamard_spectrum(&self) -> HashMap<u32, usize> {
         let mut absolute_walsh_value_count_map: HashMap<u32, usize> = HashMap::new();
+        let walsh_hadamard_values_list = self.walsh_hadamard_values();
         (0..=self.get_max_input_value()).for_each(|w| {
-            let absolute_walsh_value = self.walsh_hadamard_transform(w).unsigned_abs();
+            let absolute_walsh_value = walsh_hadamard_values_list[w as usize].unsigned_abs();
             if !absolute_walsh_value_count_map.contains_key(&absolute_walsh_value) {
                 absolute_walsh_value_count_map.insert(absolute_walsh_value, 1);
             } else {
@@ -379,9 +380,10 @@ pub trait BooleanFunctionImpl: Debug {
     /// # Returns
     /// The nonlinearity of the Boolean function, as an unsigned 32-bit integer.
     fn nonlinearity(&self) -> u32 {
+        let walsh_hadamard_values_list = self.walsh_hadamard_values();
         ((1 << self.variables_count())
             - (0..=self.get_max_input_value())
-                .map(|x| self.walsh_hadamard_transform(x).unsigned_abs())
+                .map(|x| walsh_hadamard_values_list[x as usize].unsigned_abs())
                 .max()
                 .unwrap_or(0))
             >> 1
@@ -415,8 +417,9 @@ pub trait BooleanFunctionImpl: Debug {
             return false;
         }
         let absolute_walsh_allowed_value = 1 << ((self.variables_count() + 1) >> 1);
+        let walsh_hadamard_values_list = self.walsh_hadamard_values();
         let walsh_hadamard_spectrum = (0..=self.get_max_input_value())
-            .map(|x| self.walsh_hadamard_transform(x))
+            .map(|x| walsh_hadamard_values_list[x as usize])
             .collect::<HashSet<_>>();
 
         walsh_hadamard_spectrum.len() == 3 && walsh_hadamard_spectrum.iter().all(|w| {
@@ -544,8 +547,9 @@ pub trait BooleanFunctionImpl: Debug {
     /// # Returns
     /// The correlation immunity order of the Boolean function.
     fn correlation_immunity(&self) -> usize {
+        let walsh_hadamard_values_list = self.walsh_hadamard_values();
         (1..=self.get_max_input_value())
-            .filter(|x| self.walsh_hadamard_transform(*x) != 0)
+            .filter(|x| walsh_hadamard_values_list[*x as usize] != 0)
             .map(|x| x.count_ones() as usize)
             .min()
             .unwrap_or(self.variables_count() + 1)
