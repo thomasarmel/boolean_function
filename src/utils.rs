@@ -134,6 +134,26 @@ pub(crate) fn fast_anf_transform_biguint(truth_table: &BigUint, variables_count:
     anf_form
 }
 
+pub(crate) fn fast_walsh_transform(values: &mut [i32]) {
+    let values_count = values.len();
+    #[cfg(not(feature = "unsafe_disable_safety_checks"))]
+    if values_count < 1 || !values_count.is_power_of_two() {
+        panic!("fast_walsh_transform: values length must be a power of 2");
+    }
+    let mut h = 1usize;
+    while h < values_count {
+        for i in (0..values_count).step_by(h * 2) {
+            for j in 0..h {
+                let a = values[i + j];
+                let b = values[i + j + h];
+                values[i + j] = a + b;
+                values[i + j + h] = a - b;
+            }
+        }
+        h <<= 1;
+    }
+}
+
 #[allow(dead_code)] // maybe useless, but I keep it for the beauty of the code
 pub(crate) fn walsh_matrix(dim: usize) -> Vec<Vec<i8>> {
     (0usize..(1 << dim))
