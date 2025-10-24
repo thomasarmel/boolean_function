@@ -617,6 +617,40 @@ pub trait BooleanFunctionImpl: Debug {
             .count()
     }
 
+    /// Checks if the Boolean function is left-permutive.
+    ///
+    /// A Boolean function is left-permutive if changing the left-most input bit always changes the output.
+    fn is_left_permutive(&self) -> bool {
+        let num_variables = self.variables_count();
+        let max_input_value = self.get_max_input_value();
+        let left_most_bit_mask = 1 << (num_variables - 1);
+        (0..=max_input_value >> 1)
+            .into_iter()
+            .all(|x| {
+                self.compute_cellular_automata_rule(x) != self.compute_cellular_automata_rule(x | left_most_bit_mask)
+            })
+    }
+
+    /// Checks if the Boolean function is right-permutive.
+    ///
+    /// A Boolean function is right-permutive if changing the right-most input bit always changes the output.
+    fn is_right_permutive(&self) -> bool {
+        let max_input_value = self.get_max_input_value();
+        let right_most_bit_mask = 1;
+        (0..=max_input_value >> 1)
+            .into_iter()
+            .all(|x| {
+                self.compute_cellular_automata_rule(x << 1) != self.compute_cellular_automata_rule((x << 1) | right_most_bit_mask)
+            })
+    }
+
+    /// Checks if the Boolean function is bipermutive.
+    ///
+    /// A Boolean function is bipermutive if it is both left-permutive and right-permutive.
+    fn is_bipermutive(&self) -> bool {
+        self.is_left_permutive() && self.is_right_permutive()
+    }
+
     /// Returns a 1-local neighbor of the Boolean function, at a specific position
     ///
     /// A 1-local neighbor of a Boolean function $f$ at position $i$ is a Boolean function $f_i$ such that:
@@ -2631,5 +2665,68 @@ mod tests {
         let anf = AnfPolynomial::from_str("x0*x1*x2*x3*x4*x5*x6 + x7", 8).unwrap();
         let boolean_function = BooleanFunction::from_anf_polynomial(&anf);
         assert_eq!(boolean_function.printable_hex_truth_table(), "7fffffffffffffffffffffffffffffff80000000000000000000000000000000");
+    }
+
+    #[test]
+    fn test_is_left_permutive() {
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0 + x1 + x2", 3).unwrap());
+        assert!(boolean_function.is_left_permutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(boolean_function.is_left_permutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x2*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(!boolean_function.is_left_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ff").unwrap();
+        assert!(!boolean_function.is_left_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("00").unwrap();
+        assert!(!boolean_function.is_left_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("0f").unwrap();
+        assert!(boolean_function.is_left_permutive());
+    }
+
+    #[test]
+    fn test_is_right_permutive() {
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0 + x1 + x2", 3).unwrap());
+        assert!(boolean_function.is_right_permutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(!boolean_function.is_right_permutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x2*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(boolean_function.is_right_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ff").unwrap();
+        assert!(!boolean_function.is_right_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("00").unwrap();
+        assert!(!boolean_function.is_right_permutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("0f").unwrap();
+        assert!(!boolean_function.is_right_permutive());
+    }
+
+    #[test]
+    fn test_is_bipermutive() {
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0 + x1 + x2", 3).unwrap());
+        assert!(boolean_function.is_bipermutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x0*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(!boolean_function.is_bipermutive());
+
+        let boolean_function = BooleanFunction::from_anf_polynomial(&AnfPolynomial::from_str("x2*x1 + x0 + x1 + x2", 3).unwrap());
+        assert!(!boolean_function.is_bipermutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("ff").unwrap();
+        assert!(!boolean_function.is_bipermutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("00").unwrap();
+        assert!(!boolean_function.is_bipermutive());
+
+        let boolean_function = BooleanFunction::from_hex_string_truth_table("0f").unwrap();
+        assert!(!boolean_function.is_bipermutive());
     }
 }
